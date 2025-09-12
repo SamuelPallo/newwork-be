@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: newwork-be
+server:
+  servlet:
+    context-path: /api/v1
