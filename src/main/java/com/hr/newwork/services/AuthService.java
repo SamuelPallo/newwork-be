@@ -1,19 +1,19 @@
 package com.hr.newwork.services;
 
+import com.hr.newwork.config.security.JwtTokenProvider;
 import com.hr.newwork.data.dto.LoginRequest;
 import com.hr.newwork.data.dto.LoginResponse;
 import com.hr.newwork.data.dto.RefreshTokenRequest;
 import com.hr.newwork.data.entity.RefreshToken;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.exceptions.RefreshTokenFailedException;
 import com.hr.newwork.repositories.RefreshTokenRepository;
 import com.hr.newwork.repositories.UserRepository;
-import com.hr.newwork.config.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +24,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -38,14 +37,14 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
-        }
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+            new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // At this point, authentication succeeded, so the user is guaranteed to exist
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+            .orElseThrow(() -> new IllegalStateException("User should exist after successful authentication"));
+
         String accessToken = jwtTokenProvider.generateToken(authentication);
         String refreshTokenStr = UUID.randomUUID().toString();
         Date expiry = new Date(System.currentTimeMillis() + 7 * 24 * 3600 * 1000); // 7 days
@@ -55,6 +54,7 @@ public class AuthService {
         refreshToken.setExpiryDate(expiry);
         refreshToken.setValid(true);
         refreshTokenRepository.save(refreshToken);
+
         long expiresIn = new Date(System.currentTimeMillis() + 3600000).getTime();
         return new LoginResponse(accessToken, refreshTokenStr, expiresIn);
     }
@@ -68,9 +68,9 @@ public class AuthService {
     @Transactional
     public LoginResponse refresh(RefreshTokenRequest refreshTokenRequest) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(refreshTokenRequest.getRefreshToken())
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new RefreshTokenFailedException("Invalid refresh token"));
         if (!refreshToken.isValid() || refreshToken.getExpiryDate().before(new Date())) {
-            throw new RuntimeException("Refresh token expired or invalid");
+            throw new RefreshTokenFailedException("Refresh token expired or invalid");
         }
         User user = refreshToken.getUser();
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), null, null);

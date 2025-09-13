@@ -1,10 +1,11 @@
 package com.hr.newwork.data.dto;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
-@Builder
+@SuperBuilder
 @Getter
 @Setter
 public class UserWithSensitiveDataDto extends UserDto {

@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/000-enable-uuid-ossp.xml
+  - include:
+      file: db/changelog/001-init-tables.xml
+  - include:
+      file: db/changelog/002-add-default-users.xml

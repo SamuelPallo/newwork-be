@@ -105,4 +105,29 @@
                                 referencedTableName="users" referencedColumnNames="id"
                                 constraintName="fk_audit_actor"/>
     </changeSet>
+
+    <changeSet id="006-create-refresh-token" author="copilot">
+        <createTable tableName="refresh_token">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="token" type="VARCHAR(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="refresh_token"
+                                 baseColumnNames="user_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_refresh_token_user"/>
+    </changeSet>
 </databaseChangeLog>

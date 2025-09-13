@@ -1,13 +1,13 @@
 package com.hr.newwork.data.dto;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Builder
+@SuperBuilder
 @Getter
 @Setter
 public class UserDto {
@@ -23,5 +23,3 @@ public class UserDto {
     private String role;
     // Getters and setters
 }
-
-

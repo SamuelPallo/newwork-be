@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="002-add-default-users" author="copilot">
+        <insert tableName="users">
+            <column name="id" valueComputed="uuid_generate_v4()"/>
+            <column name="email" value="user_user@example.com"/>
+            <column name="password_hash" value="$2a$12$AYRhVJuA7marJk6IauOSn.dBvKMImxc1na9pOvmX.Ggx7i403ewtq"/>
+            <column name="first_name" value="User"/>
+            <column name="last_name" value="User"/>
+            <column name="job_title" value="Employee"/>
+            <column name="department" value="General"/>
+            <column name="manager_id" />
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hire_date" valueDate="2022-01-01"/>
+            <column name="sensitive_data" value="{&quot;phone&quot;:&quot;+10000000001&quot;,&quot;address&quot;:&quot;123 Main St&quot;,&quot;salary&quot;:35000}"/>
+            <column name="role" value="USER"/>
+        </insert>
+        <insert tableName="users">
+            <column name="id" valueComputed="uuid_generate_v4()"/>
+            <column name="email" value="user_manager@example.com"/>
+            <column name="password_hash" value="$2a$12$AYRhVJuA7marJk6IauOSn.dBvKMImxc1na9pOvmX.Ggx7i403ewtq"/>
+            <column name="first_name" value="Manager"/>
+            <column name="last_name" value="User"/>
+            <column name="job_title" value="Manager"/>
+            <column name="department" value="Management"/>
+            <column name="manager_id" />
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hire_date" valueDate="2021-01-01"/>
+            <column name="sensitive_data" value="{&quot;phone&quot;:&quot;+10000000002&quot;,&quot;address&quot;:&quot;456 Manager Ave&quot;,&quot;salary&quot;:60000}"/>
+            <column name="role" value="MANAGER"/>
+        </insert>
+        <insert tableName="users">
+            <column name="id" valueComputed="uuid_generate_v4()"/>
+            <column name="email" value="user_admin@example.com"/>
+            <column name="password_hash" value="$2a$12$AYRhVJuA7marJk6IauOSn.dBvKMImxc1na9pOvmX.Ggx7i403ewtq"/>
+            <column name="first_name" value="Admin"/>
+            <column name="last_name" value="User"/>
+            <column name="job_title" value="Administrator"/>
+            <column name="department" value="Administration"/>
+            <column name="manager_id" />
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hire_date" valueDate="2020-01-01"/>
+            <column name="sensitive_data" value="{&quot;phone&quot;:&quot;+10000000003&quot;,&quot;address&quot;:&quot;789 Admin Blvd&quot;,&quot;salary&quot;:90000}"/>
+            <column name="role" value="ADMIN"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

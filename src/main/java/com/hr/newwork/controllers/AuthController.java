@@ -9,12 +9,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -28,9 +30,12 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Invalid credentials"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PostMapping("/login")
+    @PostMapping(value = "/login", produces = "application/json")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        return ResponseEntity.ok(authService.login(loginRequest));
+        log.info("Login endpoint called for email: {}", loginRequest.getEmail());
+        ResponseEntity<LoginResponse> response = ResponseEntity.ok(authService.login(loginRequest));
+        log.info("Login endpoint completed for email: {}", loginRequest.getEmail());
+        return response;
     }
 
     @Operation(summary = "Refresh token", description = "Refresh access token using a valid refresh token.")
@@ -39,9 +44,12 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Invalid refresh token"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PostMapping("/refresh")
+    @PostMapping(value = "/refresh", produces = "application/json")
     public ResponseEntity<LoginResponse> refresh(@RequestBody RefreshTokenRequest refreshRequest) {
-        return ResponseEntity.ok(authService.refresh(refreshRequest));
+        log.info("Refresh endpoint called");
+        ResponseEntity<LoginResponse> response = ResponseEntity.ok(authService.refresh(refreshRequest));
+        log.info("Refresh endpoint completed");
+        return response;
     }
 
     @Operation(summary = "Logout", description = "Invalidate the refresh token.")
@@ -50,9 +58,11 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PostMapping("/logout")
+    @PostMapping(value = "/logout", produces = "application/json")
     public ResponseEntity<Void> logout(@RequestBody RefreshTokenRequest logoutRequest) {
+        log.info("Logout endpoint called");
         logoutService.logout(logoutRequest.getRefreshToken());
+        log.info("Logout endpoint completed");
         return ResponseEntity.ok().build();
     }
 }
