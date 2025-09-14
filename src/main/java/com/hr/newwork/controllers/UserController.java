@@ -2,6 +2,7 @@ package com.hr.newwork.controllers;
 
 import com.hr.newwork.data.dto.UserDto;
 import com.hr.newwork.data.dto.UserRegistrationDto;
+import com.hr.newwork.data.dto.UserWithSensitiveDataDto;
 import com.hr.newwork.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,8 +37,8 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getUserProfile(id));
+    public ResponseEntity<UserWithSensitiveDataDto> getUserProfile(@PathVariable UUID id) {
+        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.getUserProfile(id));
     }
 
     @Operation(summary = "Update user profile", description = "Updates the user profile. Allowed for self, manager, or admin.")
@@ -49,8 +50,8 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> updateUserProfile(@PathVariable UUID id, @RequestBody UserDto updateRequest) {
-        return ResponseEntity.ok(userService.updateUserProfile(id, updateRequest));
+    public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable UUID id, @RequestBody UserDto updateRequest) {
+        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.updateUserProfile(id, updateRequest));
     }
 
     @Operation(summary = "List users", description = "Lists users. Supports filtering by department and managerId. Coworkers see only non-sensitive fields.")
@@ -71,8 +72,8 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/me")
-    public ResponseEntity<UserDto> getCurrentUserProfile() {
-        return ResponseEntity.ok(userService.getCurrentUserProfile());
+    public ResponseEntity<UserWithSensitiveDataDto> getCurrentUserProfile() {
+        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.getCurrentUserProfile());
     }
 
     @Operation(summary = "Register user", description = "Registers a new user.")

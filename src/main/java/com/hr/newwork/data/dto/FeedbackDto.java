@@ -18,6 +18,7 @@ public class FeedbackDto {
     private String polishedContent;
     private LocalDateTime createdAt;
     private String visibility;
+    private String status;
+    private String polishError;
     // Getters and setters
 }
-

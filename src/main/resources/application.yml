@@ -14,9 +14,9 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   level:
-    org.springframework.security: DEBUG
-    org.springframework.security.web.FilterChainProxy: DEBUG
-    org.springframework.security.web.authentication: DEBUG
-    org.springframework.security.web.access: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.http.converter: DEBUG
+    root: INFO
+# Hugging Face Inference API configuration
+huggingface:
+  api:
+    key: ""
+  model: "google/flan-t5-base"

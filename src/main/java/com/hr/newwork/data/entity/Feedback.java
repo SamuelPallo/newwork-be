@@ -1,5 +1,6 @@
 package com.hr.newwork.data.entity;
 
+import com.hr.newwork.util.enums.FeedbackPolishStatus;
 import com.hr.newwork.util.enums.Visibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,4 +44,8 @@ public class Feedback {
     @Enumerated(EnumType.STRING)
     private Visibility visibility;
 
+    @Enumerated(EnumType.STRING)
+    private FeedbackPolishStatus status;
+
+    private String polishError;
 }

@@ -14,6 +14,8 @@ public class FeedbackMapper {
             .polishedContent(feedback.getPolishedContent())
             .createdAt(feedback.getCreatedAt())
             .visibility(feedback.getVisibility() != null ? feedback.getVisibility().name() : null)
+            .status(feedback.getStatus() != null ? feedback.getStatus().name() : null)
+            .polishError(feedback.getPolishError())
             .build();
     }
 }

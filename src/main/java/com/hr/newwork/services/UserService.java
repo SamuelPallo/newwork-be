@@ -3,6 +3,8 @@ package com.hr.newwork.services;
 import com.hr.newwork.data.dto.UserDto;
 import com.hr.newwork.data.dto.UserRegistrationDto;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.exceptions.ForbiddenException;
+import com.hr.newwork.exceptions.NotFoundException;
 import com.hr.newwork.repositories.UserRepository;
 import com.hr.newwork.util.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +34,7 @@ public class UserService {
      * @return the user profile DTO
      */
     public UserDto getUserProfile(UUID id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         if (isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin()) {
             return UserMapper.toDtoWithSensitive(user);
         }
@@ -47,9 +49,9 @@ public class UserService {
      */
     @Transactional
     public UserDto updateUserProfile(UUID id, UserDto updateRequest) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         if (!(isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin())) {
-            throw new RuntimeException("Forbidden");
+            throw new ForbiddenException("You do not have permission to update this profile");
         }
         user = UserMapper.fromDto(updateRequest, user);
         userRepository.save(user);
@@ -63,10 +65,17 @@ public class UserService {
      * @return list of user DTOs
      */
     public List<UserDto> listUsers(String department, UUID managerId) {
-        List<User> users = userRepository.findAll();
+        List<User> users;
+        if (department != null && managerId != null) {
+            users = userRepository.findByDepartmentAndManager_Id(department, managerId);
+        } else if (department != null) {
+            users = userRepository.findByDepartment(department);
+        } else if (managerId != null) {
+            users = userRepository.findByManager_Id(managerId);
+        } else {
+            users = userRepository.findAll();
+        }
         return users.stream()
-            .filter(u -> department == null || department.equals(u.getDepartment()))
-            .filter(u -> managerId == null || (u.getManager() != null && managerId.equals(u.getManager().getId())))
             .map(UserMapper::toDto)
             .collect(Collectors.toList());
     }
@@ -88,7 +97,7 @@ public class UserService {
     @Transactional
     public UserDto registerUser(UserRegistrationDto registrationDto) {
         if (userRepository.findByEmail(registrationDto.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use");
+            throw new ForbiddenException("Email already in use");
         }
         User user = UserMapper.fromRegistrationDto(registrationDto);
         user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
@@ -100,7 +109,7 @@ public class UserService {
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = ((UserDetails) auth.getPrincipal()).getUsername();
-        return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     private boolean isCurrentUser(User user) {

@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/001-init-tables.xml
   - include:
       file: db/changelog/002-add-default-users.xml
+  - include:
+      file: db/changelog/003-feedback-polish-status.xml

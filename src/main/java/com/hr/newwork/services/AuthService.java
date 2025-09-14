@@ -10,6 +10,7 @@ import com.hr.newwork.exceptions.RefreshTokenFailedException;
 import com.hr.newwork.repositories.RefreshTokenRepository;
 import com.hr.newwork.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
 
+    @Value("${jwt.refresh-token-expiry:3600000}")
+    private long refreshTokenExpiryMs;
+
     /**
      * Authenticates a user using email and password, and returns JWT tokens.
      * Persists a refresh token for later validation.
@@ -35,7 +39,6 @@ public class AuthService {
      * @return LoginResponse containing accessToken, refreshToken, and expiresIn
      * @throws RuntimeException if credentials are invalid
      */
-    @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
@@ -47,7 +50,8 @@ public class AuthService {
 
         String accessToken = jwtTokenProvider.generateToken(authentication);
         String refreshTokenStr = UUID.randomUUID().toString();
-        Date expiry = new Date(System.currentTimeMillis() + 7 * 24 * 3600 * 1000); // 7 days
+        // Use expiry from property
+        Date expiry = new Date(System.currentTimeMillis() + refreshTokenExpiryMs);
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(refreshTokenStr);
         refreshToken.setUser(user);
@@ -55,7 +59,7 @@ public class AuthService {
         refreshToken.setValid(true);
         refreshTokenRepository.save(refreshToken);
 
-        long expiresIn = new Date(System.currentTimeMillis() + 3600000).getTime();
+        long expiresIn = expiry.getTime();
         return new LoginResponse(accessToken, refreshTokenStr, expiresIn);
     }
 
@@ -72,10 +76,25 @@ public class AuthService {
         if (!refreshToken.isValid() || refreshToken.getExpiryDate().before(new Date())) {
             throw new RefreshTokenFailedException("Refresh token expired or invalid");
         }
+        // Invalidate the used refresh token
+        refreshToken.setValid(false);
+        refreshTokenRepository.save(refreshToken);
+
         User user = refreshToken.getUser();
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), null, null);
         String accessToken = jwtTokenProvider.generateToken(authentication);
-        long expiresIn = new Date(System.currentTimeMillis() + 3600000).getTime();
-        return new LoginResponse(accessToken, refreshToken.getToken(), expiresIn);
+
+        // Generate a new refresh token
+        String newRefreshTokenStr = UUID.randomUUID().toString();
+        Date newExpiry = new Date(System.currentTimeMillis() + refreshTokenExpiryMs);
+        RefreshToken newRefreshToken = new RefreshToken();
+        newRefreshToken.setToken(newRefreshTokenStr);
+        newRefreshToken.setUser(user);
+        newRefreshToken.setExpiryDate(newExpiry);
+        newRefreshToken.setValid(true);
+        refreshTokenRepository.save(newRefreshToken);
+
+        long expiresIn = newExpiry.getTime();
+        return new LoginResponse(accessToken, newRefreshTokenStr, expiresIn);
     }
 }

@@ -32,10 +32,7 @@ public class AuthController {
     })
     @PostMapping(value = "/login", produces = "application/json")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        log.info("Login endpoint called for email: {}", loginRequest.getEmail());
-        ResponseEntity<LoginResponse> response = ResponseEntity.ok(authService.login(loginRequest));
-        log.info("Login endpoint completed for email: {}", loginRequest.getEmail());
-        return response;
+        return ResponseEntity.ok(authService.login(loginRequest));
     }
 
     @Operation(summary = "Refresh token", description = "Refresh access token using a valid refresh token.")
@@ -46,10 +43,7 @@ public class AuthController {
     })
     @PostMapping(value = "/refresh", produces = "application/json")
     public ResponseEntity<LoginResponse> refresh(@RequestBody RefreshTokenRequest refreshRequest) {
-        log.info("Refresh endpoint called");
-        ResponseEntity<LoginResponse> response = ResponseEntity.ok(authService.refresh(refreshRequest));
-        log.info("Refresh endpoint completed");
-        return response;
+        return ResponseEntity.ok(authService.refresh(refreshRequest));
     }
 
     @Operation(summary = "Logout", description = "Invalidate the refresh token.")
@@ -60,9 +54,7 @@ public class AuthController {
     })
     @PostMapping(value = "/logout", produces = "application/json")
     public ResponseEntity<Void> logout(@RequestBody RefreshTokenRequest logoutRequest) {
-        log.info("Logout endpoint called");
         logoutService.logout(logoutRequest.getRefreshToken());
-        log.info("Logout endpoint completed");
         return ResponseEntity.ok().build();
     }
 }

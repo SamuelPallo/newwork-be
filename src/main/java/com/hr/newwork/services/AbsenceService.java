@@ -54,7 +54,7 @@ public class AbsenceService {
     public List<AbsenceRequestDto> listAbsences(UUID managerId) {
         User current = getCurrentUser();
         List<AbsenceRequest> absences;
-        if (managerId != null && isCurrentUserManager() && current.getId().equals(managerId)) {
+        if (isCurrentUserManager() && current.getId().equals(managerId)) {
             absences = absenceRequestRepository.findByUser_Manager_Id(managerId);
         } else {
             absences = absenceRequestRepository.findByUserId(current.getId());
@@ -72,7 +72,9 @@ public class AbsenceService {
     @Transactional
     public AbsenceRequestDto approveAbsence(UUID id) {
         AbsenceRequest ar = absenceRequestRepository.findById(id).orElseThrow(() -> new NotFoundException("Absence not found"));
-        if (!isCurrentUserManagerOf(ar.getUser()) && !isCurrentUserAdmin()) {
+        boolean isManager = isCurrentUserManagerOf(ar.getUser());
+        boolean isAdmin = isCurrentUserAdmin();
+        if (!(isManager || isAdmin)) {
             throw new ForbiddenException("Forbidden");
         }
         ar.setStatus(AbsenceStatus.APPROVED);
@@ -91,7 +93,9 @@ public class AbsenceService {
     @Transactional
     public AbsenceRequestDto rejectAbsence(UUID id) {
         AbsenceRequest ar = absenceRequestRepository.findById(id).orElseThrow(() -> new NotFoundException("Absence not found"));
-        if (!isCurrentUserManagerOf(ar.getUser()) && !isCurrentUserAdmin()) {
+        boolean isManager = isCurrentUserManagerOf(ar.getUser());
+        boolean isAdmin = isCurrentUserAdmin();
+        if (!(isManager || isAdmin)) {
             throw new ForbiddenException("Forbidden");
         }
         ar.setStatus(AbsenceStatus.REJECTED);
