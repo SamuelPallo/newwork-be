@@ -73,7 +73,7 @@ public class UserController {
     })
     @GetMapping("/me")
     public ResponseEntity<UserWithSensitiveDataDto> getCurrentUserProfile() {
-        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.getCurrentUserProfile());
+        return ResponseEntity.ok(userService.getCurrentUserProfile());
     }
 
     @Operation(summary = "Register user", description = "Registers a new user.")
@@ -87,5 +87,18 @@ public class UserController {
     public ResponseEntity<UserDto> registerUser(@RequestBody UserRegistrationDto registrationDto) {
         UserDto userDto = userService.registerUser(registrationDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(userDto);
+    }
+
+    @Operation(summary = "Get user profile by email", description = "Returns the user profile by email. Sensitive fields are included only for self, manager, or admin.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "User profile returned"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/by-email/{email}")
+    public ResponseEntity<UserDto> getUserProfileByEmail(@PathVariable String email) {
+        return ResponseEntity.ok(userService.getUserProfileByEmail(email));
     }
 }

@@ -17,17 +17,22 @@ public class UserMapper {
      */
     public static UserDto toDto(User user) {
         if (user == null) return null;
+        String managerName = null;
+        if (user.getManager() != null) {
+            managerName = user.getManager().getFirstName() + " " + user.getManager().getLastName();
+        }
         return UserDto.builder()
-            .id(user.getId())
+            .id(user.getId() != null ? user.getId().toString() : null)
             .email(user.getEmail())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
             .jobTitle(user.getJobTitle())
             .department(user.getDepartment())
-            .managerId(user.getManager() != null ? user.getManager().getId() : null)
+            .managerId(user.getManager() != null ? user.getManager().getId().toString() : null)
             .isActive(user.isActive())
             .hireDate(user.getHireDate())
             .role(user.getRole() != null ? user.getRole().name() : null)
+            .managerName(managerName)
             .build();
     }
 
@@ -38,17 +43,22 @@ public class UserMapper {
      */
     public static UserWithSensitiveDataDto toDtoWithSensitive(User user) {
         if (user == null) return null;
+        String managerName = null;
+        if (user.getManager() != null) {
+            managerName = user.getManager().getFirstName() + " " + user.getManager().getLastName();
+        }
         return UserWithSensitiveDataDto.builder()
-            .id(user.getId())
+            .id(user.getId() != null ? user.getId().toString() : null)
             .email(user.getEmail())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
             .jobTitle(user.getJobTitle())
             .department(user.getDepartment())
-            .managerId(user.getManager() != null ? user.getManager().getId() : null)
+            .managerId(user.getManager() != null ? user.getManager().getId().toString() : null)
             .isActive(user.isActive())
             .hireDate(user.getHireDate())
             .role(user.getRole() != null ? user.getRole().name() : null)
+            .managerName(managerName)
             .sensitiveData(toSensitiveDataDto(user.getSensitiveData()))
             .build();
     }

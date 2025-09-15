@@ -2,6 +2,7 @@ package com.hr.newwork.services;
 
 import com.hr.newwork.data.dto.UserDto;
 import com.hr.newwork.data.dto.UserRegistrationDto;
+import com.hr.newwork.data.dto.UserWithSensitiveDataDto;
 import com.hr.newwork.data.entity.User;
 import com.hr.newwork.exceptions.ForbiddenException;
 import com.hr.newwork.exceptions.NotFoundException;
@@ -84,7 +85,7 @@ public class UserService {
      * Retrieves the profile of the currently authenticated user, including sensitive fields.
      * @return the current user profile DTO
      */
-    public UserDto getCurrentUserProfile() {
+    public UserWithSensitiveDataDto getCurrentUserProfile() {
         User user = getCurrentUser();
         return UserMapper.toDtoWithSensitive(user);
     }
@@ -102,6 +103,19 @@ public class UserService {
         User user = UserMapper.fromRegistrationDto(registrationDto);
         user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
         userRepository.save(user);
+        return UserMapper.toDto(user);
+    }
+
+    /**
+     * Retrieves a user profile by email. Sensitive fields are included only for self, manager, or admin.
+     * @param email the user email
+     * @return the user profile DTO
+     */
+    public UserDto getUserProfileByEmail(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        if (isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin()) {
+            return UserMapper.toDtoWithSensitive(user);
+        }
         return UserMapper.toDto(user);
     }
 

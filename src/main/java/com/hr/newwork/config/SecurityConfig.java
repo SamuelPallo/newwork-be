@@ -1,7 +1,7 @@
 package com.hr.newwork.config;
 
+import com.hr.newwork.config.security.CustomAuthenticationProvider;
 import com.hr.newwork.config.security.JwtAuthenticationFilter;
-import com.hr.newwork.services.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,7 +10,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,17 +24,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) throws Exception {
-        return http.getSharedObject(AuthenticationManagerBuilder.class)
-                .userDetailsService(userDetailsService)
-                .passwordEncoder(passwordEncoder)
-                .and()
-                .build();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService(CustomUserDetailsService customUserDetailsService) {
-        return customUserDetailsService;
+    public AuthenticationManager authenticationManager(HttpSecurity http, CustomAuthenticationProvider customAuthenticationProvider) throws Exception {
+        AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
+        builder.authenticationProvider(customAuthenticationProvider);
+        return builder.build();
     }
 
     @Bean
@@ -48,7 +40,6 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/auth/login",
                     "/auth/refresh",
-                    "/swagger-ui.html",
                     "/swagger-ui/**",
                     "/api-docs",
                     "/api-docs/**",
@@ -57,14 +48,19 @@ public class SecurityConfig {
                 ).permitAll()
                 // Admin endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                // User, Manager, Admin endpoints
+                // User registration: MANAGER, ADMIN only
+                .requestMatchers("/users/register").hasAnyRole("MANAGER", "ADMIN")
+                // User list (GET /users): MANAGER, ADMIN only
+                .requestMatchers("/users").hasAnyRole("MANAGER", "ADMIN")
+                // Absence approval/reject: MANAGER, ADMIN only
+                .requestMatchers("/absences/*/approve", "/absences/*/reject").hasAnyRole("MANAGER", "ADMIN")
+                // All other user, absence, feedback, and logout endpoints: USER, MANAGER, ADMIN
                 .requestMatchers(
                     "/users/**",
                     "/absences/**",
-                    "/feedback/**"
-                ).hasAnyRole("ADMIN", "MANAGER", "USER")
-                // Auth logout requires authentication
-                .requestMatchers("/auth/logout").authenticated()
+                    "/feedback/**",
+                    "/auth/logout"
+                ).hasAnyRole("USER", "MANAGER", "ADMIN")
                 // Any other request
                 .anyRequest().authenticated()
             )

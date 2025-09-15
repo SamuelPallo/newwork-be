@@ -6,6 +6,9 @@ import com.hr.newwork.exceptions.RefreshTokenFailedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -33,6 +36,33 @@ public class AuthExceptionAdvice {
         Map<String, String> body = new HashMap<>();
         body.put("error", "Refresh token failed");
         body.put("message", "Invalid or expired refresh token");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
+        log.warn("BadCredentialsException handled: {}", ex.getMessage());
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "Login failed");
+        body.put("message", "Invalid username or password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, String>> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("AuthenticationException handled: {}", ex.getMessage());
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "Login failed");
+        body.put("message", "Invalid username or password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleUsernameNotFound(UsernameNotFoundException ex) {
+        log.warn("UsernameNotFoundException handled: {}", ex.getMessage());
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "Login failed");
+        body.put("message", "Invalid username or password");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
