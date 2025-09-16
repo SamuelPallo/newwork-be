@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping()
+@RequestMapping("/feedback")
 public class FeedbackController {
     @Autowired
     private FeedbackService feedbackService;
@@ -60,7 +60,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "404", description = "Feedback not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PatchMapping("/feedback/{feedbackId}")
+    @PatchMapping("/{feedbackId}")
     public ResponseEntity<FeedbackDto> editFeedback(@PathVariable String feedbackId, @RequestBody FeedbackRequestDto editRequest) {
         FeedbackDto updated = feedbackService.editFeedback(feedbackId, editRequest.getContent(), editRequest.isPolish());
         return ResponseEntity.ok(updated);
@@ -74,7 +74,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "404", description = "Feedback not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping("/feedback/{feedbackId}")
+    @GetMapping("/{feedbackId}")
     public ResponseEntity<FeedbackDto> getFeedback(@PathVariable String feedbackId) {
         FeedbackDto feedback = feedbackService.getFeedback(feedbackId);
         return ResponseEntity.ok(feedback);

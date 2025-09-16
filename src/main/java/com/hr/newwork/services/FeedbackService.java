@@ -89,8 +89,8 @@ public class FeedbackService {
             feedbackList.addAll(authoredByManager);
             feedbackList = feedbackList.stream().distinct().toList();
         } else {
-            // Normal user: only feedbacks addressed to them
-            feedbackList = feedbackRepository.findByTargetUserId(requester.getId());
+            // Normal user: only feedbacks they made
+            feedbackList = feedbackRepository.findByAuthorId(requester.getId());
         }
         // Filter by visibility (customize as needed)
         return feedbackList.stream()
