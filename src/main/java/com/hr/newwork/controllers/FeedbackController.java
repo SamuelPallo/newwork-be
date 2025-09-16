@@ -1,7 +1,7 @@
 package com.hr.newwork.controllers;
 
-import com.hr.newwork.data.dto.FeedbackRequestDto;
 import com.hr.newwork.data.dto.FeedbackDto;
+import com.hr.newwork.data.dto.FeedbackRequestDto;
 import com.hr.newwork.services.FeedbackService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping()
@@ -34,7 +33,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping("/users/{id}/feedback")
-    public ResponseEntity<FeedbackDto> createFeedback(@PathVariable UUID id, @RequestBody FeedbackRequestDto feedbackRequest) {
+    public ResponseEntity<FeedbackDto> createFeedback(@PathVariable String id, @RequestBody FeedbackRequestDto feedbackRequest) {
         FeedbackDto created = feedbackService.createFeedback(id, feedbackRequest.getContent(), feedbackRequest.isPolish());
         return ResponseEntity.ok(created);
     }
@@ -48,7 +47,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/users/{id}/feedback")
-    public ResponseEntity<List<FeedbackDto>> listFeedback(@PathVariable UUID id) {
+    public ResponseEntity<List<FeedbackDto>> listFeedback(@PathVariable String id) {
         List<FeedbackDto> feedbackList = feedbackService.listFeedback(id);
         return ResponseEntity.ok(feedbackList);
     }
@@ -62,7 +61,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PatchMapping("/feedback/{feedbackId}")
-    public ResponseEntity<FeedbackDto> editFeedback(@PathVariable UUID feedbackId, @RequestBody FeedbackRequestDto editRequest) {
+    public ResponseEntity<FeedbackDto> editFeedback(@PathVariable String feedbackId, @RequestBody FeedbackRequestDto editRequest) {
         FeedbackDto updated = feedbackService.editFeedback(feedbackId, editRequest.getContent(), editRequest.isPolish());
         return ResponseEntity.ok(updated);
     }
@@ -76,7 +75,7 @@ public class FeedbackController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/feedback/{feedbackId}")
-    public ResponseEntity<FeedbackDto> getFeedback(@PathVariable UUID feedbackId) {
+    public ResponseEntity<FeedbackDto> getFeedback(@PathVariable String feedbackId) {
         FeedbackDto feedback = feedbackService.getFeedback(feedbackId);
         return ResponseEntity.ok(feedback);
     }

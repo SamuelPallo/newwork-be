@@ -1,12 +1,13 @@
 package com.hr.newwork.util.mappers;
 
-import com.hr.newwork.data.entity.User;
-import com.hr.newwork.data.entity.SensitiveData;
+import com.hr.newwork.data.dto.SensitiveDataDto;
 import com.hr.newwork.data.dto.UserDto;
 import com.hr.newwork.data.dto.UserWithSensitiveDataDto;
-import com.hr.newwork.data.dto.SensitiveDataDto;
-import com.hr.newwork.util.enums.Role;
+import com.hr.newwork.data.entity.SensitiveData;
+import com.hr.newwork.data.entity.User;
+import com.hr.newwork.repositories.RoleRepository;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,7 +26,7 @@ public class UserMapper {
         if (user.getManager() != null) {
             managerName = user.getManager().getFirstName() + " " + user.getManager().getLastName();
         }
-        Set<String> roles = user.getRoles() != null ? user.getRoles().stream().map(Role::name).collect(Collectors.toSet()) : null;
+        Set<String> roles = user.getRoles() != null ? user.getRoles().stream().map(com.hr.newwork.data.entity.Role::getName).collect(Collectors.toSet()) : null;
         return UserDto.builder()
             .id(user.getId() != null ? user.getId().toString() : null)
             .email(user.getEmail())
@@ -52,7 +53,7 @@ public class UserMapper {
         if (user.getManager() != null) {
             managerName = user.getManager().getFirstName() + " " + user.getManager().getLastName();
         }
-        Set<String> roles = user.getRoles() != null ? user.getRoles().stream().map(Role::name).collect(Collectors.toSet()) : null;
+        Set<String> roles = user.getRoles() != null ? user.getRoles().stream().map(role -> role.getName()).collect(Collectors.toSet()) : null;
         return UserWithSensitiveDataDto.builder()
             .id(user.getId() != null ? user.getId().toString() : null)
             .email(user.getEmail())
@@ -90,7 +91,7 @@ public class UserMapper {
      * @param user the existing User entity
      * @return the updated User entity
      */
-    public static User fromDto(UserDto dto, User user) {
+    public static User fromDto(UserDto dto, User user, RoleRepository roleRepository) {
         if (dto == null || user == null) return user;
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
@@ -99,15 +100,10 @@ public class UserMapper {
         user.setActive(dto.isActive());
         user.setHireDate(dto.getHireDate());
         if (dto.getRoles() != null) {
-            Set<Role> roles = dto.getRoles().stream()
-                .map(roleStr -> {
-                    try {
-                        return Role.valueOf(roleStr);
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(r -> r != null)
+            Set<com.hr.newwork.data.entity.Role> roles = dto.getRoles().stream()
+                .map(roleRepository::findByName)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toSet());
             user.setRoles(roles);
         }
@@ -120,17 +116,19 @@ public class UserMapper {
      * @param dto the UserRegistrationDto
      * @return the new User entity
      */
-    public static User fromRegistrationDto(com.hr.newwork.data.dto.UserRegistrationDto dto) {
+    public static User fromRegistrationDto(com.hr.newwork.data.dto.UserRegistrationDto dto, RoleRepository roleRepository) {
         if (dto == null) return null;
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
-        Set<Role> roles = new java.util.HashSet<>();
+        Set<com.hr.newwork.data.entity.Role> roles = new java.util.HashSet<>();
         if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-            roles.addAll(dto.getRoles());
+            for (String roleName : dto.getRoles()) {
+                roleRepository.findByName(roleName).ifPresent(roles::add);
+            }
         } else {
-            roles.add(Role.EMPLOYEE);
+            roleRepository.findByName("EMPLOYEE").ifPresent(roles::add);
         }
         user.setRoles(roles);
         user.setActive(true);
@@ -144,7 +142,7 @@ public class UserMapper {
      * @param user the existing User entity
      * @return the updated User entity
      */
-    public static User fromDto(UserWithSensitiveDataDto dto, User user) {
+    public static User fromDto(UserWithSensitiveDataDto dto, User user, RoleRepository roleRepository) {
         if (dto == null || user == null) return user;
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
@@ -153,15 +151,10 @@ public class UserMapper {
         user.setActive(dto.isActive());
         user.setHireDate(dto.getHireDate());
         if (dto.getRoles() != null) {
-            Set<Role> roles = dto.getRoles().stream()
-                .map(roleStr -> {
-                    try {
-                        return Role.valueOf(roleStr);
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(r -> r != null)
+            Set<com.hr.newwork.data.entity.Role> roles = dto.getRoles().stream()
+                .map(roleRepository::findByName)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toSet());
             user.setRoles(roles);
         }

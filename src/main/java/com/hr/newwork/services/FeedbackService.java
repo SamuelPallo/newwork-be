@@ -3,13 +3,13 @@ package com.hr.newwork.services;
 import com.hr.newwork.data.dto.FeedbackDto;
 import com.hr.newwork.data.entity.Feedback;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.exceptions.BadRequestException;
 import com.hr.newwork.exceptions.ForbiddenException;
 import com.hr.newwork.exceptions.NotFoundException;
 import com.hr.newwork.repositories.FeedbackRepository;
 import com.hr.newwork.repositories.UserRepository;
 import com.hr.newwork.services.polish.FeedbackPolisher;
 import com.hr.newwork.util.enums.FeedbackPolishStatus;
-import com.hr.newwork.util.enums.Role;
 import com.hr.newwork.util.enums.Visibility;
 import com.hr.newwork.util.mappers.FeedbackMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +33,11 @@ public class FeedbackService {
     private final FeedbackPolisher feedbackPolisher;
 
     @Transactional
-    public FeedbackDto createFeedback(UUID userId, String content, boolean polish) {
+    public FeedbackDto createFeedback(String ignoredUserId, String content, boolean polish) {
         User author = getCurrentUser();
-        User targetUser = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
-        // Permission check: allow self, manager, or admin to leave feedback (customize as needed)
-        if (!canLeaveFeedback(author, targetUser)) {
-            throw new ForbiddenException("Not allowed to leave feedback for this user");
+        User targetUser = author.getManager();
+        if (targetUser == null) {
+            throw new BadRequestException("Current user does not have a manager to send feedback to.");
         }
         Feedback feedback = new Feedback();
         feedback.setAuthor(author);
@@ -62,9 +61,37 @@ public class FeedbackService {
         }
     }
 
-    public List<FeedbackDto> listFeedback(UUID userId) {
+    public List<FeedbackDto> listFeedback(String userIdStr) {
+        UUID userId;
+        try {
+            userId = UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid user ID format");
+        }
         User requester = getCurrentUser();
-        List<Feedback> feedbackList = feedbackRepository.findByTargetUserId(userId);
+        // Check if requester is a manager (has subordinates)
+        List<User> subordinates = userRepository.findByManager_Id(requester.getId());
+        boolean isManager = !subordinates.isEmpty();
+        List<Feedback> feedbackList;
+        if (isManager) {
+            // Collect subordinate IDs
+            List<UUID> subordinateIds = subordinates.stream().map(User::getId).toList();
+            // Feedbacks addressed to subordinates
+            List<Feedback> forSubordinates = subordinateIds.isEmpty() ? List.of() : feedbackRepository.findByTargetUserIdIn(subordinateIds);
+            // Feedbacks addressed to manager
+            List<Feedback> forManager = feedbackRepository.findByTargetUserId(requester.getId());
+            // Feedbacks authored by manager
+            List<Feedback> authoredByManager = feedbackRepository.findByAuthorId(requester.getId());
+            // Merge and deduplicate
+            feedbackList = new java.util.ArrayList<>();
+            feedbackList.addAll(forSubordinates);
+            feedbackList.addAll(forManager);
+            feedbackList.addAll(authoredByManager);
+            feedbackList = feedbackList.stream().distinct().toList();
+        } else {
+            // Normal user: only feedbacks addressed to them
+            feedbackList = feedbackRepository.findByTargetUserId(requester.getId());
+        }
         // Filter by visibility (customize as needed)
         return feedbackList.stream()
             .filter(fb -> canViewFeedback(requester, fb))
@@ -73,7 +100,13 @@ public class FeedbackService {
     }
 
     @Transactional
-    public FeedbackDto editFeedback(UUID feedbackId, String content, boolean polish) {
+    public FeedbackDto editFeedback(String feedbackIdStr, String content, boolean polish) {
+        UUID feedbackId;
+        try {
+            feedbackId = UUID.fromString(feedbackIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid feedback ID format");
+        }
         Feedback feedback = feedbackRepository.findById(feedbackId).orElseThrow(() -> new NotFoundException("Feedback not found"));
         User current = getCurrentUser();
         if (!canEditFeedback(current, feedback)) {
@@ -96,7 +129,13 @@ public class FeedbackService {
         }
     }
 
-    public FeedbackDto getFeedback(UUID feedbackId) {
+    public FeedbackDto getFeedback(String feedbackIdStr) {
+        UUID feedbackId;
+        try {
+            feedbackId = UUID.fromString(feedbackIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid feedback ID format");
+        }
         Feedback feedback = feedbackRepository.findById(feedbackId)
             .orElseThrow(() -> new NotFoundException("Feedback not found"));
         User requester = getCurrentUser();
@@ -116,7 +155,7 @@ public class FeedbackService {
         // Allow self, manager, or admin (customize as needed)
         if (author.getId().equals(target.getId())) return true;
         if (target.getManager() != null && target.getManager().getId().equals(author.getId())) return true;
-        if (author.getRoles() != null && author.getRoles().contains(Role.ADMIN)) return true;
+        if (author.getRoles() != null && author.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()))) return true;
         return false;
     }
 
@@ -129,7 +168,7 @@ public class FeedbackService {
         // Allow author, manager of target, or admin
         if (feedback.getAuthor().getId().equals(user.getId())) return true;
         if (feedback.getTargetUser().getManager() != null && feedback.getTargetUser().getManager().getId().equals(user.getId())) return true;
-        if (user.getRoles() != null && user.getRoles().contains(com.hr.newwork.util.enums.Role.ADMIN)) return true;
+        if (user.getRoles() != null && user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()))) return true;
         return false;
     }
 

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
@@ -38,8 +37,8 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<UserWithSensitiveDataDto> getUserProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.getUserProfile(id));
+    public ResponseEntity<UserWithSensitiveDataDto> getUserProfile(@PathVariable String id) {
+        return ResponseEntity.ok(userService.getUserProfile(id));
     }
 
     @Operation(summary = "Update user profile", description = "Updates the user profile. Allowed for self, manager, or admin.")
@@ -51,7 +50,7 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable UUID id, @RequestBody UserWithSensitiveDataDto updateRequest) {
+    public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable String id, @RequestBody UserWithSensitiveDataDto updateRequest) {
         return ResponseEntity.ok(userService.updateUserProfile(id, updateRequest));
     }
 
@@ -118,5 +117,17 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Get manager's team", description = "Returns a list of users managed by the given manager (no sensitive data).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Team list returned"),
+        @ApiResponse(responseCode = "404", description = "Manager not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/team/{uuid}")
+    public ResponseEntity<List<UserDto>> getTeam(@PathVariable String uuid) {
+        return ResponseEntity.ok(userService.getTeam(uuid));
     }
 }

@@ -7,13 +7,16 @@ import com.hr.newwork.data.entity.User;
 import com.hr.newwork.exceptions.BadRequestException;
 import com.hr.newwork.exceptions.ForbiddenException;
 import com.hr.newwork.exceptions.NotFoundException;
+import com.hr.newwork.repositories.RoleRepository;
 import com.hr.newwork.repositories.UserRepository;
+import com.hr.newwork.util.enums.Role;
 import com.hr.newwork.util.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,18 +30,25 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.hr.newwork.util.SecurityUtil securityUtil;
+    private final RoleRepository roleRepository;
 
     /**
      * Retrieves a user profile by ID. Sensitive fields are included only for self, manager, or admin.
-     * @param id the user ID
+     * @param id the user ID as String
      * @return the user profile DTO
      */
-    public UserDto getUserProfile(UUID id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
+    public UserWithSensitiveDataDto getUserProfile(String id) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new NotFoundException("user does not exist");
+        }
+        User user = userRepository.findById(uuid).orElseThrow(() -> new NotFoundException("user does not exist"));
         if (securityUtil.isCurrentUser(user) || securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin()) {
             return UserMapper.toDtoWithSensitive(user);
         }
-        return UserMapper.toDto(user);
+        return UserMapper.toDtoWithSensitive(user); // Always return sensitive DTO for this endpoint
     }
 
     /**
@@ -48,12 +58,35 @@ public class UserService {
      * @return the updated user profile DTO
      */
     @Transactional
-    public UserWithSensitiveDataDto updateUserProfile(UUID id, UserWithSensitiveDataDto updateRequest) {
-        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
-        if (!(securityUtil.isCurrentUser(user) || securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin())) {
-            throw new ForbiddenException("You do not have permission to update this profile");
+    public UserWithSensitiveDataDto updateUserProfile(String id, UserWithSensitiveDataDto updateRequest) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new NotFoundException("user does not exist");
         }
-        user = UserMapper.fromDto(updateRequest, user);
+        User user = userRepository.findById(uuid).orElseThrow(() -> new NotFoundException("user does not exist"));
+        Role highestRole = securityUtil.getHighestRole();
+        switch (highestRole) {
+            case ADMIN:
+                // Admin can update any user
+                break;
+            case MANAGER:
+                // Manager can update their subordinates or themselves
+                if (!securityUtil.isCurrentUserManagerOf(user) && !securityUtil.isCurrentUser(user)) {
+                    throw new ForbiddenException("You do not have permission to update this profile");
+                }
+                break;
+            case EMPLOYEE:
+                // Employee can update only themselves
+                if (!securityUtil.isCurrentUser(user)) {
+                    throw new ForbiddenException("You do not have permission to update this profile");
+                }
+                break;
+            default:
+                throw new ForbiddenException("You do not have permission to update this profile");
+        }
+        user = UserMapper.fromDto(updateRequest, user, roleRepository);
         userRepository.save(user);
         return UserMapper.toDtoWithSensitive(user);
     }
@@ -118,7 +151,7 @@ public class UserService {
         if (userRepository.findByEmail(registrationDto.getEmail()).isPresent()) {
             throw new ForbiddenException("Email already in use");
         }
-        User user = UserMapper.fromRegistrationDto(registrationDto);
+        User user = UserMapper.fromRegistrationDto(registrationDto, roleRepository);
         user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
         userRepository.save(user);
         return UserMapper.toDto(user);
@@ -165,5 +198,31 @@ public class UserService {
             return;
         }
         throw new ForbiddenException("You do not have permission to delete this user.");
+    }
+
+    /**
+     * Returns a list of users managed by the given manager (no sensitive data).
+     * @param uuid the manager's UUID as String
+     * @return list of UserDto
+     */
+    public List<UserDto> getTeam(String uuid) {
+        UUID managerUuid;
+        try {
+            managerUuid = UUID.fromString(uuid);
+        } catch (IllegalArgumentException e) {
+            throw new NotFoundException("Manager not found");
+        }
+        User manager = userRepository.findById(managerUuid)
+            .orElseThrow(() -> new NotFoundException("Manager not found"));
+        List<User> team = userRepository.findByManager_Id(managerUuid);
+        // Add manager to the team list, ensuring no duplicates
+        List<User> result = new ArrayList<>();
+        result.add(manager);
+        for (User user : team) {
+            if (!user.getId().equals(manager.getId())) {
+                result.add(user);
+            }
+        }
+        return result.stream().map(UserMapper::toDto).collect(Collectors.toList());
     }
 }

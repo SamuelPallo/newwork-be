@@ -1,37 +1,51 @@
 package com.hr.newwork.util;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SensitiveDataSanitizer {
     private static final String MASK = "*****";
     private static final String[] SENSITIVE_KEYS = {"password", "pass", "pwd", "secret", "token", "key", "credentials", "auth", "apiKey", "accessToken", "refreshToken", "passwordHash"};
 
     public static Object sanitizeObject(Object obj) {
+        return sanitizeObject(obj, Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private static Object sanitizeObject(Object obj, Set<Object> visited) {
         if (obj == null) return null;
+        if (visited.contains(obj)) return MASK; // Prevent cycles
+        visited.add(obj);
         if (obj instanceof Map<?, ?> map) {
-            Map<Object, Object> sanitized = new java.util.HashMap<>();
+            Map<Object, Object> sanitized = new HashMap<>();
             for (var entry : map.entrySet()) {
                 String key = String.valueOf(entry.getKey()).toLowerCase();
                 if (isSensitiveKey(key)) {
                     sanitized.put(entry.getKey(), MASK);
                 } else {
-                    sanitized.put(entry.getKey(), sanitizeObject(entry.getValue()));
+                    sanitized.put(entry.getKey(), sanitizeObject(entry.getValue(), visited));
                 }
             }
             return sanitized;
         } else if (obj instanceof Collection<?> col) {
-            Collection<Object> sanitized = obj instanceof java.util.List ? new java.util.ArrayList<>() : new java.util.HashSet<>();
+            Collection<Object> sanitized = obj instanceof List ? new ArrayList<>() : new HashSet<>();
             for (Object item : col) {
-                sanitized.add(sanitizeObject(item));
+                sanitized.add(sanitizeObject(item, visited));
             }
             return sanitized;
         } else if (obj.getClass().isArray()) {
             int len = java.lang.reflect.Array.getLength(obj);
             Object[] sanitized = new Object[len];
             for (int i = 0; i < len; i++) {
-                sanitized[i] = sanitizeObject(java.lang.reflect.Array.get(obj, i));
+                sanitized[i] = sanitizeObject(java.lang.reflect.Array.get(obj, i), visited);
             }
             return sanitized;
         } else if (obj instanceof String str) {
@@ -47,7 +61,7 @@ public class SensitiveDataSanitizer {
                     if (isSensitiveKey(field.getName())) {
                         field.set(clone, MASK);
                     } else {
-                        field.set(clone, sanitizeObject(value));
+                        field.set(clone, sanitizeObject(value, visited));
                     }
                 }
                 return clone;
@@ -63,7 +77,7 @@ public class SensitiveDataSanitizer {
         for (int i = 0; i < args.length; i++) {
             sanitized[i] = sanitizeObject(args[i]);
         }
-        return java.util.Arrays.toString(sanitized);
+        return Arrays.toString(sanitized);
     }
 
     private static boolean isSensitiveKey(String key) {
@@ -83,4 +97,3 @@ public class SensitiveDataSanitizer {
         return pkg.startsWith("com.hr.newwork") && !(obj instanceof Enum);
     }
 }
-

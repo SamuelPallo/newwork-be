@@ -127,4 +127,21 @@
                                  referencedColumnNames="id"
                                  constraintName="fk_refresh_token_user"/>
     </changeSet>
+
+    <changeSet id="007-create-audit-log" author="copilot">
+        <createTable tableName="audit_log">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="actor_id" type="UUID" />
+            <column name="action" type="VARCHAR(100)" />
+            <column name="target_table" type="VARCHAR(100)" />
+            <column name="target_id" type="UUID" />
+            <column name="timestamp" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="details" type="JSONB" />
+        </createTable>
+        <addForeignKeyConstraint baseTableName="audit_log" baseColumnNames="actor_id"
+                                referencedTableName="users" referencedColumnNames="id"
+                                constraintName="fk_audit_actor"/>
+    </changeSet>
 </databaseChangeLog>

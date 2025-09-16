@@ -1,6 +1,5 @@
 package com.hr.newwork.data.dto;
 
-import com.hr.newwork.util.enums.Role;
 import lombok.Data;
 
 import java.util.Set;
@@ -11,5 +10,5 @@ public class UserRegistrationDto {
     private String password;
     private String firstName;
     private String lastName;
-    private Set<Role> roles;
+    private Set<String> roles;
 }

@@ -10,6 +10,7 @@ import java.util.UUID;
 @Repository
 public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
     List<Feedback> findByTargetUserId(UUID userId);
+    List<Feedback> findByTargetUserIdIn(List<UUID> userIds);
+    List<Feedback> findByAuthorId(UUID authorId);
     // Add custom queries as needed
 }
-

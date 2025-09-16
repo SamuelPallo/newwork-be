@@ -5,15 +5,14 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Builder
 @Getter
 @Setter
 public class FeedbackDto {
-    private UUID id;
-    private UUID authorId;
-    private UUID targetUserId;
+    private String id;
+    private String authorName;
+    private String targetUserName;
     private String content;
     private String polishedContent;
     private LocalDateTime createdAt;

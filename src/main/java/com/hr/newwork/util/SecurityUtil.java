@@ -23,12 +23,12 @@ public class SecurityUtil {
 
     public boolean isCurrentUserManager() {
         User user = getCurrentUser();
-        return user.getRoles() != null && user.getRoles().contains(Role.MANAGER);
+        return user.getRoles() != null && user.getRoles().stream().anyMatch(role -> "MANAGER".equals(role.getName()));
     }
 
     public boolean isCurrentUserAdmin() {
         User user = getCurrentUser();
-        return user.getRoles() != null && user.getRoles().contains(Role.ADMIN);
+        return user.getRoles() != null && user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()));
     }
 
     public boolean isCurrentUserManagerOf(User user) {
@@ -38,5 +38,18 @@ public class SecurityUtil {
 
     public boolean isCurrentUser(User user) {
         return getCurrentUser().getId().equals(user.getId());
+    }
+
+    public Role getHighestRole() {
+        User user = getCurrentUser();
+        if (user.getRoles() != null) {
+            if (user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()))) {
+                return Role.ADMIN;
+            }
+            if (user.getRoles().stream().anyMatch(role -> "MANAGER".equals(role.getName()))) {
+                return Role.MANAGER;
+            }
+        }
+        return Role.EMPLOYEE;
     }
 }
