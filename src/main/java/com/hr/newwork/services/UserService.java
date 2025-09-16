@@ -4,14 +4,12 @@ import com.hr.newwork.data.dto.UserDto;
 import com.hr.newwork.data.dto.UserRegistrationDto;
 import com.hr.newwork.data.dto.UserWithSensitiveDataDto;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.exceptions.BadRequestException;
 import com.hr.newwork.exceptions.ForbiddenException;
 import com.hr.newwork.exceptions.NotFoundException;
 import com.hr.newwork.repositories.UserRepository;
 import com.hr.newwork.util.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +26,7 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.hr.newwork.util.SecurityUtil securityUtil;
 
     /**
      * Retrieves a user profile by ID. Sensitive fields are included only for self, manager, or admin.
@@ -36,7 +35,7 @@ public class UserService {
      */
     public UserDto getUserProfile(UUID id) {
         User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
-        if (isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin()) {
+        if (securityUtil.isCurrentUser(user) || securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin()) {
             return UserMapper.toDtoWithSensitive(user);
         }
         return UserMapper.toDto(user);
@@ -49,9 +48,9 @@ public class UserService {
      * @return the updated user profile DTO
      */
     @Transactional
-    public UserDto updateUserProfile(UUID id, UserDto updateRequest) {
+    public UserWithSensitiveDataDto updateUserProfile(UUID id, UserWithSensitiveDataDto updateRequest) {
         User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
-        if (!(isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin())) {
+        if (!(securityUtil.isCurrentUser(user) || securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin())) {
             throw new ForbiddenException("You do not have permission to update this profile");
         }
         user = UserMapper.fromDto(updateRequest, user);
@@ -60,19 +59,38 @@ public class UserService {
     }
 
     /**
-     * Lists users, optionally filtered by department and managerId.
+     * Lists users, optionally filtered by department, managerId, or managerEmail.
      * @param department the department to filter by (optional)
-     * @param managerId the manager ID to filter by (optional)
+     * @param managerId the manager ID to filter by (optional, as String)
+     * @param managerEmail the manager email to filter by (optional, as String)
      * @return list of user DTOs
      */
-    public List<UserDto> listUsers(String department, UUID managerId) {
+    public List<UserDto> listUsers(String department, String managerId, String managerEmail) {
         List<User> users;
-        if (department != null && managerId != null) {
-            users = userRepository.findByDepartmentAndManager_Id(department, managerId);
+        UUID managerUuid = null;
+        if (managerId != null && !managerId.isBlank()) {
+            try {
+                managerUuid = UUID.fromString(managerId);
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid managerId format: must be a UUID");
+            }
+        }
+        if (managerUuid != null) {
+            if (department != null) {
+                users = userRepository.findByDepartmentAndManager_Id(department, managerUuid);
+            } else {
+                users = userRepository.findByManager_Id(managerUuid);
+            }
+        } else if (managerEmail != null && !managerEmail.isBlank()) {
+            User manager = userRepository.findByEmail(managerEmail)
+                .orElseThrow(() -> new NotFoundException("Manager not found for email: " + managerEmail));
+            if (department != null) {
+                users = userRepository.findByDepartmentAndManager_Id(department, manager.getId());
+            } else {
+                users = userRepository.findByManager_Id(manager.getId());
+            }
         } else if (department != null) {
             users = userRepository.findByDepartment(department);
-        } else if (managerId != null) {
-            users = userRepository.findByManager_Id(managerId);
         } else {
             users = userRepository.findAll();
         }
@@ -86,7 +104,7 @@ public class UserService {
      * @return the current user profile DTO
      */
     public UserWithSensitiveDataDto getCurrentUserProfile() {
-        User user = getCurrentUser();
+        User user = securityUtil.getCurrentUser();
         return UserMapper.toDtoWithSensitive(user);
     }
 
@@ -113,29 +131,39 @@ public class UserService {
      */
     public UserDto getUserProfileByEmail(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
-        if (isCurrentUser(user) || isCurrentUserManagerOf(user) || isCurrentUserAdmin()) {
+        if (securityUtil.isCurrentUser(user) || securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin()) {
             return UserMapper.toDtoWithSensitive(user);
         }
         return UserMapper.toDto(user);
     }
 
-    // Helper methods
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = ((UserDetails) auth.getPrincipal()).getUsername();
-        return userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
-    }
-
-    private boolean isCurrentUser(User user) {
-        return getCurrentUser().getId().equals(user.getId());
-    }
-
-    private boolean isCurrentUserManagerOf(User user) {
-        User current = getCurrentUser();
-        return user.getManager() != null && user.getManager().getId().equals(current.getId());
-    }
-
-    private boolean isCurrentUserAdmin() {
-        return getCurrentUser().getRole() != null && getCurrentUser().getRole().name().equals("ADMIN");
+    /**
+     * Deletes a user. Admins can delete any user except themselves. Managers can delete users managed by them.
+     * No user can delete themselves.
+     * Accepts a String id, parses to UUID, and handles errors.
+     * @param id the user ID to delete (as String)
+     */
+    @Transactional
+    public void deleteUser(String id) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new NotFoundException("Invalid user id format");
+        }
+        User targetUser = userRepository.findById(uuid)
+            .orElseThrow(() -> new NotFoundException("User not found"));
+        if (securityUtil.isCurrentUser(targetUser)) {
+            throw new ForbiddenException("No user can delete themselves.");
+        }
+        if (securityUtil.isCurrentUserManagerOf(targetUser)) {
+            userRepository.deleteById(uuid);
+            return;
+        }
+        if (securityUtil.isCurrentUserAdmin()) {
+            userRepository.deleteById(uuid);
+            return;
+        }
+        throw new ForbiddenException("You do not have permission to delete this user.");
     }
 }

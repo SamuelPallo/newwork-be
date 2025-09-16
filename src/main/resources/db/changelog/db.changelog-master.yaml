@@ -7,3 +7,8 @@ databaseChangeLog:
       file: db/changelog/002-add-default-users.xml
   - include:
       file: db/changelog/003-feedback-polish-status.xml
+  - include:
+      file: db/changelog/004-add-unique-index-to-users-email.xml
+  - include:
+      file: db/changelog/005-seed-managers-hierarchy.xml
+

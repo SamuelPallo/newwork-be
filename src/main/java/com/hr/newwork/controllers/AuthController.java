@@ -46,15 +46,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(refreshRequest));
     }
 
-    @Operation(summary = "Logout", description = "Invalidate the refresh token.")
+    @Operation(summary = "Logout", description = "Invalidate all refresh tokens for the authenticated user.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Logout successful"),
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping(value = "/logout", produces = "application/json")
-    public ResponseEntity<Void> logout(@RequestBody RefreshTokenRequest logoutRequest) {
-        logoutService.logout(logoutRequest.getRefreshToken());
+    public ResponseEntity<Void> logout() {
+        logoutService.logoutForCurrentUser();
         return ResponseEntity.ok().build();
     }
 }

@@ -9,6 +9,7 @@ import com.hr.newwork.repositories.FeedbackRepository;
 import com.hr.newwork.repositories.UserRepository;
 import com.hr.newwork.services.polish.FeedbackPolisher;
 import com.hr.newwork.util.enums.FeedbackPolishStatus;
+import com.hr.newwork.util.enums.Role;
 import com.hr.newwork.util.enums.Visibility;
 import com.hr.newwork.util.mappers.FeedbackMapper;
 import lombok.RequiredArgsConstructor;
@@ -115,7 +116,7 @@ public class FeedbackService {
         // Allow self, manager, or admin (customize as needed)
         if (author.getId().equals(target.getId())) return true;
         if (target.getManager() != null && target.getManager().getId().equals(author.getId())) return true;
-        if (author.getRole() != null && author.getRole().name().equals("ADMIN")) return true;
+        if (author.getRoles() != null && author.getRoles().contains(Role.ADMIN)) return true;
         return false;
     }
 
@@ -128,7 +129,7 @@ public class FeedbackService {
         // Allow author, manager of target, or admin
         if (feedback.getAuthor().getId().equals(user.getId())) return true;
         if (feedback.getTargetUser().getManager() != null && feedback.getTargetUser().getManager().getId().equals(user.getId())) return true;
-        if (user.getRole() != null && user.getRole().name().equals("ADMIN")) return true;
+        if (user.getRoles() != null && user.getRoles().contains(com.hr.newwork.util.enums.Role.ADMIN)) return true;
         return false;
     }
 

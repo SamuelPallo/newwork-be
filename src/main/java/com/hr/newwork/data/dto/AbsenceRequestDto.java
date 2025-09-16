@@ -1,5 +1,6 @@
 package com.hr.newwork.data.dto;
 
+import com.hr.newwork.util.enums.AbsenceType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,4 +24,3 @@ public class AbsenceRequestDto {
     private LocalDateTime updatedAt;
     // Getters and setters
 }
-

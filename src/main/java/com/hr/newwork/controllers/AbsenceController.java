@@ -38,7 +38,7 @@ public class AbsenceController {
         return ResponseEntity.ok(absenceService.submitAbsence(absenceRequest));
     }
 
-    @Operation(summary = "List absences", description = "List absences for the current user or manager's reports.")
+    @Operation(summary = "List personal absences", description = "List absences for the specified user. Only the user or an admin can access this endpoint.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Absence list returned"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
@@ -46,9 +46,9 @@ public class AbsenceController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping
-    public ResponseEntity<List<AbsenceRequestDto>> listAbsences(@RequestParam(required = false) UUID managerId) {
-        return ResponseEntity.ok(absenceService.listAbsences(managerId));
+    @GetMapping("/{userId}")
+    public ResponseEntity<List<AbsenceRequestDto>> listAbsences(@PathVariable String userId) {
+        return ResponseEntity.ok(absenceService.listAbsences(userId));
     }
 
     @Operation(summary = "Approve absence", description = "Approve an absence request. Manager only.")
@@ -75,5 +75,24 @@ public class AbsenceController {
     @PatchMapping("/{id}/reject")
     public ResponseEntity<AbsenceRequestDto> rejectAbsence(@PathVariable UUID id) {
         return ResponseEntity.ok(absenceService.rejectAbsence(id));
+    }
+
+    @Operation(summary = "List absences for manager's reports", description = "List all absences for users managed by the current authenticated manager filtered by status.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Absences returned"),
+            @ApiResponse(responseCode = "400", description = "Invalid status value"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: Only a manager can view absences for their reports."),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/reports")
+    public ResponseEntity<List<AbsenceRequestDto>> listAbsencesForReports(
+            @RequestParam(value = "status", required = false, defaultValue = "PENDING") String statusStr) {
+        try {
+            com.hr.newwork.util.enums.AbsenceStatus status = com.hr.newwork.util.enums.AbsenceStatus.valueOf(statusStr.toUpperCase());
+            return ResponseEntity.ok(absenceService.listAbsencesForCurrentManagerByStatus(status));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

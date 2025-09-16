@@ -3,16 +3,13 @@ package com.hr.newwork.services;
 import com.hr.newwork.data.dto.AbsenceRequestDto;
 import com.hr.newwork.data.entity.AbsenceRequest;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.exceptions.ForbiddenException;
+import com.hr.newwork.exceptions.NotFoundException;
 import com.hr.newwork.repositories.AbsenceRequestRepository;
 import com.hr.newwork.repositories.UserRepository;
 import com.hr.newwork.util.enums.AbsenceStatus;
 import com.hr.newwork.util.mappers.AbsenceRequestMapper;
-import com.hr.newwork.exceptions.NotFoundException;
-import com.hr.newwork.exceptions.ForbiddenException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +26,7 @@ import java.util.stream.Collectors;
 public class AbsenceService {
     private final AbsenceRequestRepository absenceRequestRepository;
     private final UserRepository userRepository;
+    private final com.hr.newwork.util.SecurityUtil securityUtil;
 
     /**
      * Submits a new absence request for the current user.
@@ -37,7 +35,7 @@ public class AbsenceService {
      */
     @Transactional
     public AbsenceRequestDto submitAbsence(AbsenceRequestDto dto) {
-        User user = getCurrentUser();
+        User user = securityUtil.getCurrentUser();
         AbsenceRequest entity = AbsenceRequestMapper.toEntity(dto, user);
         entity.setStatus(AbsenceStatus.PENDING);
         entity.setCreatedAt(LocalDateTime.now());
@@ -47,18 +45,12 @@ public class AbsenceService {
     }
 
     /**
-     * Lists absence requests for the current user, or for manager's reports if managerId is provided and user is a manager.
-     * @param managerId the manager's user ID (optional)
+     * Lists absence requests for the current user only (personal absences).
      * @return list of AbsenceRequestDto
      */
-    public List<AbsenceRequestDto> listAbsences(UUID managerId) {
-        User current = getCurrentUser();
-        List<AbsenceRequest> absences;
-        if (isCurrentUserManager() && current.getId().equals(managerId)) {
-            absences = absenceRequestRepository.findByUser_Manager_Id(managerId);
-        } else {
-            absences = absenceRequestRepository.findByUserId(current.getId());
-        }
+    public List<AbsenceRequestDto> listAbsences() {
+        User current = securityUtil.getCurrentUser();
+        List<AbsenceRequest> absences = absenceRequestRepository.findByUserId(current.getId());
         return absences.stream().map(AbsenceRequestMapper::toDto).collect(Collectors.toList());
     }
 
@@ -72,8 +64,8 @@ public class AbsenceService {
     @Transactional
     public AbsenceRequestDto approveAbsence(UUID id) {
         AbsenceRequest ar = absenceRequestRepository.findById(id).orElseThrow(() -> new NotFoundException("Absence not found"));
-        boolean isManager = isCurrentUserManagerOf(ar.getUser());
-        boolean isAdmin = isCurrentUserAdmin();
+        boolean isManager = securityUtil.isCurrentUserManagerOf(ar.getUser());
+        boolean isAdmin = securityUtil.isCurrentUserAdmin();
         if (!(isManager || isAdmin)) {
             throw new ForbiddenException("Forbidden");
         }
@@ -93,8 +85,8 @@ public class AbsenceService {
     @Transactional
     public AbsenceRequestDto rejectAbsence(UUID id) {
         AbsenceRequest ar = absenceRequestRepository.findById(id).orElseThrow(() -> new NotFoundException("Absence not found"));
-        boolean isManager = isCurrentUserManagerOf(ar.getUser());
-        boolean isAdmin = isCurrentUserAdmin();
+        boolean isManager = securityUtil.isCurrentUserManagerOf(ar.getUser());
+        boolean isAdmin = securityUtil.isCurrentUserAdmin();
         if (!(isManager || isAdmin)) {
             throw new ForbiddenException("Forbidden");
         }
@@ -104,22 +96,39 @@ public class AbsenceService {
         return AbsenceRequestMapper.toDto(saved);
     }
 
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = ((UserDetails) auth.getPrincipal()).getUsername();
-        return userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+    /**
+     * Lists absence requests for a user by UUID or email.
+     * Accepts either a UUID string or an email as input.
+     * @param userIdOrEmail the user's UUID or email
+     * @return list of AbsenceRequestDto
+     */
+    public List<AbsenceRequestDto> listAbsences(String userIdOrEmail) {
+        User user = null;
+        try {
+            UUID userId = UUID.fromString(userIdOrEmail);
+            user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User not found for id: " + userIdOrEmail));
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, try as email
+            user = userRepository.findByEmail(userIdOrEmail)
+                    .orElseThrow(() -> new NotFoundException("User not found for email: " + userIdOrEmail));
+        }
+        List<AbsenceRequest> absences = absenceRequestRepository.findByUserId(user.getId());
+        return absences.stream().map(AbsenceRequestMapper::toDto).collect(Collectors.toList());
     }
 
-    private boolean isCurrentUserManager() {
-        return getCurrentUser().getRole() != null && getCurrentUser().getRole().name().equals("MANAGER");
-    }
-
-    private boolean isCurrentUserAdmin() {
-        return getCurrentUser().getRole() != null && getCurrentUser().getRole().name().equals("ADMIN");
-    }
-
-    private boolean isCurrentUserManagerOf(User user) {
-        User current = getCurrentUser();
-        return user.getManager() != null && user.getManager().getId().equals(current.getId());
+    /**
+     * Lists all absences for users managed by the current authenticated manager filtered by status.
+     * Only accessible by managers.
+     * @param status the absence status to filter by
+     * @return list of AbsenceRequestDto
+     */
+    public List<AbsenceRequestDto> listAbsencesForCurrentManagerByStatus(AbsenceStatus status) {
+        User current = securityUtil.getCurrentUser();
+        if (!securityUtil.isCurrentUserManager()) {
+            throw new ForbiddenException("Only managers can view absences for their reports.");
+        }
+        List<AbsenceRequest> absences = absenceRequestRepository.findByUser_Manager_IdAndStatus(current.getId(), status);
+        return absences.stream().map(AbsenceRequestMapper::toDto).collect(Collectors.toList());
     }
 }

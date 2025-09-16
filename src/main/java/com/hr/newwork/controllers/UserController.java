@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,8 +51,8 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable UUID id, @RequestBody UserDto updateRequest) {
-        return ResponseEntity.ok((UserWithSensitiveDataDto) userService.updateUserProfile(id, updateRequest));
+    public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable UUID id, @RequestBody UserWithSensitiveDataDto updateRequest) {
+        return ResponseEntity.ok(userService.updateUserProfile(id, updateRequest));
     }
 
     @Operation(summary = "List users", description = "Lists users. Supports filtering by department and managerId. Coworkers see only non-sensitive fields.")
@@ -61,8 +62,11 @@ public class UserController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping
-    public ResponseEntity<List<UserDto>> listUsers(@RequestParam(required = false) String department, @RequestParam(required = false) UUID managerId) {
-        return ResponseEntity.ok(userService.listUsers(department, managerId));
+    public ResponseEntity<List<UserDto>> listUsers(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String managerId,
+            @RequestParam(required = false) String managerEmail) {
+        return ResponseEntity.ok(userService.listUsers(department, managerId, managerEmail));
     }
 
     @Operation(summary = "Get current user profile", description = "Returns the profile of the currently authenticated user, including sensitive fields.")
@@ -100,5 +104,19 @@ public class UserController {
     @GetMapping("/by-email/{email}")
     public ResponseEntity<UserDto> getUserProfileByEmail(@PathVariable String email) {
         return ResponseEntity.ok(userService.getUserProfileByEmail(email));
+    }
+
+    @Operation(summary = "Delete user", description = "Deletes a user. Admins can delete any user except themselves. Managers can delete users managed by them.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "User deleted"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

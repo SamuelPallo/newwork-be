@@ -54,13 +54,12 @@ public class SecurityConfig {
                 .requestMatchers("/users").hasAnyRole("MANAGER", "ADMIN")
                 // Absence approval/reject: MANAGER, ADMIN only
                 .requestMatchers("/absences/*/approve", "/absences/*/reject").hasAnyRole("MANAGER", "ADMIN")
-                // All other user, absence, feedback, and logout endpoints: USER, MANAGER, ADMIN
+                // All other user, absence, feedback, and logout endpoints: EMPLOYEE, MANAGER, ADMIN
                 .requestMatchers(
                     "/users/**",
                     "/absences/**",
-                    "/feedback/**",
-                    "/auth/logout"
-                ).hasAnyRole("USER", "MANAGER", "ADMIN")
+                    "/feedback/**"
+                ).hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
                 // Any other request
                 .anyRequest().authenticated()
             )

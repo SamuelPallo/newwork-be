@@ -1,6 +1,7 @@
 package com.hr.newwork.repositories;
 
 import com.hr.newwork.data.entity.AbsenceRequest;
+import com.hr.newwork.util.enums.AbsenceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -26,4 +27,12 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
      * @return list of absence requests
      */
     List<AbsenceRequest> findByUser_Manager_Id(UUID managerId);
+
+    /**
+     * Finds all absence requests for users managed by a given manager and status.
+     * @param managerId the manager's user ID
+     * @param status the absence status
+     * @return list of absence requests
+     */
+    List<AbsenceRequest> findByUser_Manager_IdAndStatus(UUID managerId, AbsenceStatus status);
 }

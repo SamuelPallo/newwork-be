@@ -1,6 +1,7 @@
 package com.hr.newwork.controllers.advices;
 
 import com.hr.newwork.controllers.UserController;
+import com.hr.newwork.exceptions.BadRequestException;
 import com.hr.newwork.exceptions.ForbiddenException;
 import com.hr.newwork.exceptions.NotFoundException;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,14 @@ public class UserExceptionAdvice {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(BadRequestException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "Bad request");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleOther(Exception ex) {
         Map<String, String> body = new HashMap<>();
@@ -40,4 +49,3 @@ public class UserExceptionAdvice {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
-

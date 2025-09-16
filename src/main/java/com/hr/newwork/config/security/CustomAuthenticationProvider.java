@@ -17,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -38,12 +40,14 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid password");
         }
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
-        log.info("Authenticating user: {} with authorities: {}", user.getEmail(), authority);
+        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+            .collect(Collectors.toList());
+        log.info("Authenticating user: {} with authorities: {}", user.getEmail(), authorities);
         return new UsernamePasswordAuthenticationToken(
                 user.getEmail(),
                 user.getPasswordHash(),
-                Collections.singletonList(authority)
+                authorities
         );
     }
 

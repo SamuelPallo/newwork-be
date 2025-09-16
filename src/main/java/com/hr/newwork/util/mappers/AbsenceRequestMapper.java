@@ -1,8 +1,10 @@
 package com.hr.newwork.util.mappers;
 
-import com.hr.newwork.data.entity.AbsenceRequest;
 import com.hr.newwork.data.dto.AbsenceRequestDto;
+import com.hr.newwork.data.entity.AbsenceRequest;
 import com.hr.newwork.data.entity.User;
+import com.hr.newwork.util.enums.AbsenceStatus;
+import com.hr.newwork.util.enums.AbsenceType;
 
 public class AbsenceRequestMapper {
     public static AbsenceRequestDto toDto(AbsenceRequest ar) {
@@ -12,7 +14,7 @@ public class AbsenceRequestMapper {
             .userId(ar.getUser() != null ? ar.getUser().getId() : null)
             .startDate(ar.getStartDate())
             .endDate(ar.getEndDate())
-            .type(ar.getType() != null ? ar.getType().name() : null)
+            .type(ar.getType() != null ? ar.getType().name() : null) // AbsenceType as String
             .status(ar.getStatus() != null ? ar.getStatus().name() : null)
             .reason(ar.getReason())
             .createdAt(ar.getCreatedAt())
@@ -22,15 +24,23 @@ public class AbsenceRequestMapper {
 
     public static AbsenceRequest toEntity(AbsenceRequestDto dto, User user) {
         if (dto == null) return null;
-        return AbsenceRequest.builder()
-            .user(user)
-            .startDate(dto.getStartDate())
-            .endDate(dto.getEndDate())
-            .type(dto.getType() != null ? com.hr.newwork.util.enums.AbsenceType.valueOf(dto.getType()) : null)
-            .status(dto.getStatus() != null ? com.hr.newwork.util.enums.AbsenceStatus.valueOf(dto.getStatus()) : com.hr.newwork.util.enums.AbsenceStatus.PENDING)
-            .reason(dto.getReason())
-            .createdAt(dto.getCreatedAt())
-            .updatedAt(dto.getUpdatedAt())
-            .build();
+        AbsenceType typeEnum = null;
+        if (dto.getType() != null) {
+            try {
+                typeEnum = AbsenceType.fromString(dto.getType());
+            } catch (IllegalArgumentException e) {
+                typeEnum = AbsenceType.PERSONAL; // default or handle as needed
+            }
+        }
+        AbsenceRequest entity = new AbsenceRequest();
+        entity.setUser(user);
+        entity.setStartDate(dto.getStartDate());
+        entity.setEndDate(dto.getEndDate());
+        entity.setType(typeEnum);
+        entity.setStatus(dto.getStatus() != null ? AbsenceStatus.valueOf(dto.getStatus()) : AbsenceStatus.PENDING);
+        entity.setReason(dto.getReason());
+        entity.setCreatedAt(dto.getCreatedAt());
+        entity.setUpdatedAt(dto.getUpdatedAt());
+        return entity;
     }
 }
