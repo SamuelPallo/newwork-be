@@ -5,11 +5,11 @@ package com.hr.newwork.services.polish;
  */
 public interface FeedbackPolisher {
     /**
-     * Polish the given feedback content (e.g., using HuggingFace or a mock).
+     * Polish the given feedback content using the specified model (e.g., using HuggingFace or a mock).
      * @param content the original feedback content
+     * @param model the model to use for polishing
      * @return the polished content
      * @throws Exception if polishing fails
      */
-    String polish(String content) throws Exception;
+    String polish(String content, String model) throws Exception;
 }
-

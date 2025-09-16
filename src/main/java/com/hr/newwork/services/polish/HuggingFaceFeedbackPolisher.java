@@ -32,11 +32,11 @@ public class HuggingFaceFeedbackPolisher implements FeedbackPolisher {
     }
 
     @Override
-    public String polish(String content) {
+    public String polish(String content, String model) {
         if (apiKey == null || apiKey.isEmpty()) {
             throw new IllegalStateException("Hugging Face API key is not configured");
         }
-        String endpoint = "https://api-inference.huggingface.co/models/" + model;
+        String endpoint = "https://api-inference.huggingface.co/models/" + (model != null && !model.isBlank() ? model : this.model);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);

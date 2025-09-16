@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "huggingface.api", name = "key", havingValue = "", matchIfMissing = true)
 public class MockFeedbackPolisher implements FeedbackPolisher {
     @Override
-    public String polish(String content) {
-        // Simulate a HuggingFace call by appending a marker
-        return content + " [Polished by AI]";
+    public String polish(String content, String model) {
+        // Simulate a HuggingFace call by appending a marker and the model name
+        return content + " [Polished by AI, model: " + model + "]";
     }
 }

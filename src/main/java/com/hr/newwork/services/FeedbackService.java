@@ -33,7 +33,7 @@ public class FeedbackService {
     private final FeedbackPolisher feedbackPolisher;
 
     @Transactional
-    public FeedbackDto createFeedback(String ignoredUserId, String content, boolean polish) {
+    public FeedbackDto createFeedback(String ignoredUserId, String content, String model) {
         User author = getCurrentUser();
         User targetUser = author.getManager();
         if (targetUser == null) {
@@ -45,12 +45,12 @@ public class FeedbackService {
         feedback.setContent(content);
         feedback.setCreatedAt(LocalDateTime.now());
         feedback.setVisibility(Visibility.PUBLIC); // set as needed
-        if (polish) {
+        if (model != null && !model.isBlank()) {
             feedback.setStatus(FeedbackPolishStatus.POLISHING);
             feedback.setPolishedContent(null);
             feedback.setPolishError(null);
             Feedback saved = feedbackRepository.save(feedback);
-            polishAsync(saved.getId(), content);
+            polishAsync(saved.getId(), content, model);
             return FeedbackMapper.toDto(saved);
         } else {
             feedback.setStatus(null);
@@ -100,33 +100,23 @@ public class FeedbackService {
     }
 
     @Transactional
-    public FeedbackDto editFeedback(String feedbackIdStr, String content, boolean polish) {
-        UUID feedbackId;
-        try {
-            feedbackId = UUID.fromString(feedbackIdStr);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid feedback ID format");
-        }
-        Feedback feedback = feedbackRepository.findById(feedbackId).orElseThrow(() -> new NotFoundException("Feedback not found"));
-        User current = getCurrentUser();
-        if (!canEditFeedback(current, feedback)) {
-            throw new ForbiddenException("Not allowed to edit this feedback");
-        }
+    public FeedbackDto editFeedback(String feedbackId, String content, String model) {
+        Feedback feedback = feedbackRepository.findById(UUID.fromString(feedbackId))
+            .orElseThrow(() -> new NotFoundException("Feedback not found"));
         feedback.setContent(content);
-        if (polish) {
+        if (model != null && !model.isBlank()) {
             feedback.setStatus(FeedbackPolishStatus.POLISHING);
             feedback.setPolishedContent(null);
             feedback.setPolishError(null);
-            Feedback saved = feedbackRepository.save(feedback);
-            polishAsync(saved.getId(), content);
-            return FeedbackMapper.toDto(saved);
+            feedbackRepository.save(feedback);
+            polishAsync(feedback.getId(), content, model);
         } else {
             feedback.setStatus(null);
             feedback.setPolishedContent(null);
             feedback.setPolishError(null);
-            Feedback saved = feedbackRepository.save(feedback);
-            return FeedbackMapper.toDto(saved);
+            feedbackRepository.save(feedback);
         }
+        return FeedbackMapper.toDto(feedback);
     }
 
     public FeedbackDto getFeedback(String feedbackIdStr) {
@@ -173,11 +163,11 @@ public class FeedbackService {
     }
 
     @Async
-    public void polishAsync(UUID feedbackId, String content) {
+    public void polishAsync(UUID feedbackId, String content, String model) {
         Feedback feedback = feedbackRepository.findById(feedbackId).orElse(null);
         if (feedback == null) return;
         try {
-            String polished = feedbackPolisher.polish(content);
+            String polished = feedbackPolisher.polish(content, model);
             feedback.setPolishedContent(polished);
             feedback.setStatus(FeedbackPolishStatus.READY);
             feedback.setPolishError(null);

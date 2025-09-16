@@ -4,12 +4,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * DTO for creating feedback, including the content and whether to polish with AI.
+ * DTO for creating feedback, including the content and model for feedback polishing.
  */
 @Getter
 @Setter
 public class FeedbackRequestDto {
     private String content;
-    private boolean polish;
+    private String model; // e.g. "hf-model"
 }
-
