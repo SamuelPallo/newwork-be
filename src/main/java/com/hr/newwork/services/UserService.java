@@ -202,19 +202,13 @@ public class UserService {
 
     /**
      * Returns a list of users managed by the given manager (no sensitive data).
-     * @param uuid the manager's UUID as String
+     * @param email the manager's email
      * @return list of UserDto
      */
-    public List<UserDto> getTeam(String uuid) {
-        UUID managerUuid;
-        try {
-            managerUuid = UUID.fromString(uuid);
-        } catch (IllegalArgumentException e) {
-            throw new NotFoundException("Manager not found");
-        }
-        User manager = userRepository.findById(managerUuid)
+    public List<UserDto> getTeam(String email) {
+        User manager = userRepository.findByEmail(email)
             .orElseThrow(() -> new NotFoundException("Manager not found"));
-        List<User> team = userRepository.findByManager_Id(managerUuid);
+        List<User> team = userRepository.findByManager_Id(manager.getId());
         // Add manager to the team list, ensuring no duplicates
         List<User> result = new ArrayList<>();
         result.add(manager);

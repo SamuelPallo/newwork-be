@@ -126,8 +126,8 @@ public class UserController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping("/team/{uuid}")
-    public ResponseEntity<List<UserDto>> getTeam(@PathVariable String uuid) {
-        return ResponseEntity.ok(userService.getTeam(uuid));
+    @GetMapping("/team/{email}")
+    public ResponseEntity<List<UserDto>> getTeam(@PathVariable String email) {
+        return ResponseEntity.ok(userService.getTeam(email));
     }
 }
