@@ -50,8 +50,6 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 // User registration: MANAGER, ADMIN only
                 .requestMatchers("/users/register").hasAnyRole("MANAGER", "ADMIN")
-                // User list (GET /users): MANAGER, ADMIN only
-                .requestMatchers("/users").hasAnyRole("MANAGER", "ADMIN")
                 // Absence approval/reject: MANAGER, ADMIN only
                 .requestMatchers("/absences/*/approve", "/absences/*/reject").hasAnyRole("MANAGER", "ADMIN")
                 // All other user, absence, feedback, and logout endpoints: EMPLOYEE, MANAGER, ADMIN

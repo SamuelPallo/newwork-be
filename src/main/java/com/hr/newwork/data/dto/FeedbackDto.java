@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 public class FeedbackDto {
     private String id;
+    private String authorId;
     private String authorName;
     private String targetUserName;
     private String content;

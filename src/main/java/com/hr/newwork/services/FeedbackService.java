@@ -1,6 +1,7 @@
 package com.hr.newwork.services;
 
 import com.hr.newwork.data.dto.FeedbackDto;
+import com.hr.newwork.data.dto.FeedbackRequestDto;
 import com.hr.newwork.data.entity.Feedback;
 import com.hr.newwork.data.entity.User;
 import com.hr.newwork.exceptions.BadRequestException;
@@ -19,8 +20,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,28 +36,33 @@ public class FeedbackService {
     private final FeedbackPolisher feedbackPolisher;
 
     @Transactional
-    public FeedbackDto createFeedback(String ignoredUserId, String content, String model) {
+    public FeedbackDto createFeedback(String ignoredUserId, FeedbackRequestDto feedbackRequest) {
+        // Get the current authenticated user as the author
         User author = getCurrentUser();
-        User targetUser = author.getManager();
-        if (targetUser == null) {
-            throw new BadRequestException("Current user does not have a manager to send feedback to.");
-        }
+        // Parse the target user UUID from the request
+        UUID targetUserUuid = UUID.fromString(feedbackRequest.getTargetUserId());
+        // Fetch the target user using findById (returns Optional)
+        User targetUser = userRepository.findById(targetUserUuid)
+            .orElseThrow(() -> new NotFoundException("Target user not found"));
+
+        // Create and populate the Feedback entity
         Feedback feedback = new Feedback();
         feedback.setAuthor(author);
         feedback.setTargetUser(targetUser);
-        feedback.setContent(content);
+        feedback.setContent(feedbackRequest.getContent());
         feedback.setCreatedAt(LocalDateTime.now());
         feedback.setVisibility(Visibility.PUBLIC); // set as needed
-        if (model != null && !model.isBlank()) {
-            feedback.setStatus(FeedbackPolishStatus.POLISHING);
-            feedback.setPolishedContent(null);
-            feedback.setPolishError(null);
+
+        // If a model is provided, set status to POLISHING and trigger polish
+        if (StringUtils.hasText(feedbackRequest.getModel())) {
+            String model = feedbackRequest.getModel();
             Feedback saved = feedbackRepository.save(feedback);
-            polishAsync(saved.getId(), content, model);
+            polishAsync(saved.getId(), feedbackRequest.getContent(), model);
             return FeedbackMapper.toDto(saved);
         } else {
-            feedback.setStatus(null);
+            // If no model, just save the feedback with no polish
             feedback.setPolishedContent(null);
+            feedback.setStatus(null);
             feedback.setPolishError(null);
             Feedback saved = feedbackRepository.save(feedback);
             return FeedbackMapper.toDto(saved);
@@ -68,48 +76,33 @@ public class FeedbackService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Invalid user ID format");
         }
-        User requester = getCurrentUser();
-        // Check if requester is a manager (has subordinates)
-        List<User> subordinates = userRepository.findByManager_Id(requester.getId());
-        boolean isManager = !subordinates.isEmpty();
-        List<Feedback> feedbackList;
-        if (isManager) {
-            // Collect subordinate IDs
-            List<UUID> subordinateIds = subordinates.stream().map(User::getId).toList();
-            // Feedbacks addressed to subordinates
-            List<Feedback> forSubordinates = subordinateIds.isEmpty() ? List.of() : feedbackRepository.findByTargetUserIdIn(subordinateIds);
-            // Feedbacks addressed to manager
-            List<Feedback> forManager = feedbackRepository.findByTargetUserId(requester.getId());
-            // Feedbacks authored by manager
-            List<Feedback> authoredByManager = feedbackRepository.findByAuthorId(requester.getId());
-            // Merge and deduplicate
-            feedbackList = new java.util.ArrayList<>();
-            feedbackList.addAll(forSubordinates);
-            feedbackList.addAll(forManager);
-            feedbackList.addAll(authoredByManager);
-            feedbackList = feedbackList.stream().distinct().toList();
-        } else {
-            // Normal user: only feedbacks they made
-            feedbackList = feedbackRepository.findByAuthorId(requester.getId());
-        }
-        // Filter by visibility (customize as needed)
-        return feedbackList.stream()
-            .filter(fb -> canViewFeedback(requester, fb))
+        // Fetch feedbacks where user is author
+        List<Feedback> asAuthor = feedbackRepository.findByAuthorId(userId);
+        // Fetch feedbacks where user is target
+        List<Feedback> asTarget = feedbackRepository.findByTargetUserId(userId);
+        // Merge and deduplicate
+        List<Feedback> allFeedbacks = new ArrayList<>();
+        allFeedbacks.addAll(asAuthor);
+        allFeedbacks.addAll(asTarget);
+        allFeedbacks = allFeedbacks.stream().distinct().toList();
+        return allFeedbacks.stream()
+            .filter(fb -> canViewFeedback(getCurrentUser(), fb))
             .map(FeedbackMapper::toDto)
             .collect(Collectors.toList());
     }
 
     @Transactional
-    public FeedbackDto editFeedback(String feedbackId, String content, String model) {
+    public FeedbackDto editFeedback(String feedbackId, FeedbackRequestDto editRequest) {
         Feedback feedback = feedbackRepository.findById(UUID.fromString(feedbackId))
             .orElseThrow(() -> new NotFoundException("Feedback not found"));
-        feedback.setContent(content);
+        feedback.setContent(editRequest.getContent());
+        String model = editRequest.getModel();
         if (model != null && !model.isBlank()) {
             feedback.setStatus(FeedbackPolishStatus.POLISHING);
             feedback.setPolishedContent(null);
             feedback.setPolishError(null);
             feedbackRepository.save(feedback);
-            polishAsync(feedback.getId(), content, model);
+            polishAsync(feedback.getId(), editRequest.getContent(), model);
         } else {
             feedback.setStatus(null);
             feedback.setPolishedContent(null);

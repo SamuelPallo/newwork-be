@@ -12,9 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,12 +49,12 @@ public class UserController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ResponseEntity<UserWithSensitiveDataDto> updateUserProfile(@PathVariable String id, @RequestBody UserWithSensitiveDataDto updateRequest) {
         return ResponseEntity.ok(userService.updateUserProfile(id, updateRequest));
     }
 
-    @Operation(summary = "List users", description = "Lists users. Supports filtering by department and managerId. Coworkers see only non-sensitive fields.")
+    @Operation(summary = "List users", description = "Lists users. Supports filtering by department, managerId, and role. Coworkers see only non-sensitive fields.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "User list returned"),
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
@@ -64,8 +64,9 @@ public class UserController {
     public ResponseEntity<List<UserDto>> listUsers(
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String managerId,
-            @RequestParam(required = false) String managerEmail) {
-        return ResponseEntity.ok(userService.listUsers(department, managerId, managerEmail));
+            @RequestParam(required = false) String managerEmail,
+            @RequestParam(required = false) String role) {
+        return ResponseEntity.ok(userService.listUsers(department, managerId, managerEmail, role));
     }
 
     @Operation(summary = "Get current user profile", description = "Returns the profile of the currently authenticated user, including sensitive fields.")
@@ -126,8 +127,9 @@ public class UserController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping("/team/{email}")
-    public ResponseEntity<List<UserDto>> getTeam(@PathVariable String email) {
-        return ResponseEntity.ok(userService.getTeam(email));
+    @GetMapping("/team/{userId}")
+    public ResponseEntity<List<UserDto>> getTeam(@PathVariable String userId, @RequestParam String scope) {
+        return ResponseEntity.ok(userService.getTeam(userId, scope));
     }
 }
+

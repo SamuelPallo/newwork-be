@@ -34,7 +34,7 @@ public class FeedbackController {
     })
     @PostMapping("/users/{id}/feedback")
     public ResponseEntity<FeedbackDto> createFeedback(@PathVariable String id, @RequestBody FeedbackRequestDto feedbackRequest) {
-        FeedbackDto created = feedbackService.createFeedback(id, feedbackRequest.getContent(), feedbackRequest.getModel());
+        FeedbackDto created = feedbackService.createFeedback(id, feedbackRequest);
         return ResponseEntity.ok(created);
     }
 
@@ -62,7 +62,7 @@ public class FeedbackController {
     })
     @PatchMapping("/{feedbackId}")
     public ResponseEntity<FeedbackDto> editFeedback(@PathVariable String feedbackId, @RequestBody FeedbackRequestDto editRequest) {
-        FeedbackDto updated = feedbackService.editFeedback(feedbackId, editRequest.getContent(), editRequest.getModel());
+        FeedbackDto updated = feedbackService.editFeedback(feedbackId, editRequest);
         return ResponseEntity.ok(updated);
     }
 

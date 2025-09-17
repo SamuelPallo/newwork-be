@@ -17,8 +17,10 @@ public class FeedbackMapper {
     public static FeedbackDto toDto(Feedback feedback) {
         if (feedback == null) return null;
         String authorName = null;
+        String authorId = null;
         if (feedback.getAuthor() != null) {
             authorName = buildFullName(feedback.getAuthor().getFirstName(), feedback.getAuthor().getLastName());
+            authorId = feedback.getAuthor().getId() != null ? feedback.getAuthor().getId().toString() : null;
         }
         String targetUserName = null;
         if (feedback.getTargetUser() != null) {
@@ -26,6 +28,7 @@ public class FeedbackMapper {
         }
         return FeedbackDto.builder()
             .id(feedback.getId() != null ? feedback.getId().toString() : null)
+            .authorId(authorId)
             .authorName(authorName)
             .targetUserName(targetUserName)
             .content(feedback.getContent())

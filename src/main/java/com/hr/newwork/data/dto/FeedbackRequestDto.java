@@ -11,4 +11,5 @@ import lombok.Setter;
 public class FeedbackRequestDto {
     private String content;
     private String model; // e.g. "hf-model"
+    private String targetUserId;
 }

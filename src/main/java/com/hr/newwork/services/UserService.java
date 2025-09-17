@@ -86,19 +86,21 @@ public class UserService {
             default:
                 throw new ForbiddenException("You do not have permission to update this profile");
         }
-        user = UserMapper.fromDto(updateRequest, user, roleRepository);
+        boolean isManagerOrAdmin = securityUtil.isCurrentUserManagerOf(user) || securityUtil.isCurrentUserAdmin();
+        user = UserMapper.fromDto(updateRequest, user, roleRepository, userRepository, () -> isManagerOrAdmin);
         userRepository.save(user);
         return UserMapper.toDtoWithSensitive(user);
     }
 
     /**
-     * Lists users, optionally filtered by department, managerId, or managerEmail.
+     * Lists users, optionally filtered by department, managerId, managerEmail, and role.
      * @param department the department to filter by (optional)
      * @param managerId the manager ID to filter by (optional, as String)
      * @param managerEmail the manager email to filter by (optional, as String)
+     * @param role the role to filter by (optional, as String)
      * @return list of user DTOs
      */
-    public List<UserDto> listUsers(String department, String managerId, String managerEmail) {
+    public List<UserDto> listUsers(String department, String managerId, String managerEmail, String role) {
         List<User> users;
         UUID managerUuid = null;
         if (managerId != null && !managerId.isBlank()) {
@@ -108,24 +110,47 @@ public class UserService {
                 throw new BadRequestException("Invalid managerId format: must be a UUID");
             }
         }
-        if (managerUuid != null) {
-            if (department != null) {
-                users = userRepository.findByDepartmentAndManager_Id(department, managerUuid);
+        if (role != null && !role.isBlank()) {
+            if (managerUuid != null) {
+                if (department != null) {
+                    users = userRepository.findByDepartmentAndManager_IdAndRole(department, managerUuid, role);
+                } else {
+                    users = userRepository.findByManager_IdAndRole(managerUuid, role);
+                }
+            } else if (managerEmail != null && !managerEmail.isBlank()) {
+                User manager = userRepository.findByEmail(managerEmail)
+                    .orElseThrow(() -> new NotFoundException("Manager not found for email: " + managerEmail));
+                if (department != null) {
+                    users = userRepository.findByDepartmentAndManager_IdAndRole(department, manager.getId(), role);
+                } else {
+                    users = userRepository.findByManager_IdAndRole(manager.getId(), role);
+                }
+            } else if (department != null) {
+                users = userRepository.findByDepartmentAndRole(department, role);
             } else {
-                users = userRepository.findByManager_Id(managerUuid);
+                users = userRepository.findByRole(role);
             }
-        } else if (managerEmail != null && !managerEmail.isBlank()) {
-            User manager = userRepository.findByEmail(managerEmail)
-                .orElseThrow(() -> new NotFoundException("Manager not found for email: " + managerEmail));
-            if (department != null) {
-                users = userRepository.findByDepartmentAndManager_Id(department, manager.getId());
-            } else {
-                users = userRepository.findByManager_Id(manager.getId());
-            }
-        } else if (department != null) {
-            users = userRepository.findByDepartment(department);
         } else {
-            users = userRepository.findAll();
+            // fallback to previous logic if no role filter
+            if (managerUuid != null) {
+                if (department != null) {
+                    users = userRepository.findByDepartmentAndManager_Id(department, managerUuid);
+                } else {
+                    users = userRepository.findByManager_Id(managerUuid);
+                }
+            } else if (managerEmail != null && !managerEmail.isBlank()) {
+                User manager = userRepository.findByEmail(managerEmail)
+                    .orElseThrow(() -> new NotFoundException("Manager not found for email: " + managerEmail));
+                if (department != null) {
+                    users = userRepository.findByDepartmentAndManager_Id(department, manager.getId());
+                } else {
+                    users = userRepository.findByManager_Id(manager.getId());
+                }
+            } else if (department != null) {
+                users = userRepository.findByDepartment(department);
+            } else {
+                users = userRepository.findAll();
+            }
         }
         return users.stream()
             .map(UserMapper::toDto)
@@ -151,8 +176,7 @@ public class UserService {
         if (userRepository.findByEmail(registrationDto.getEmail()).isPresent()) {
             throw new ForbiddenException("Email already in use");
         }
-        User user = UserMapper.fromRegistrationDto(registrationDto, roleRepository);
-        user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
+        User user = UserMapper.fromRegistrationDto(registrationDto, passwordEncoder, roleRepository, userRepository);
         userRepository.save(user);
         return UserMapper.toDto(user);
     }
@@ -201,21 +225,48 @@ public class UserService {
     }
 
     /**
-     * Returns a list of users managed by the given manager (no sensitive data).
-     * @param email the manager's email
+     * Returns a list of users for the current user's team or managed team, depending on the scope param.
+     * @param scope 'team' for the team the user is part of, 'managed' for the team the user manages
      * @return list of UserDto
      */
-    public List<UserDto> getTeam(String email) {
-        User manager = userRepository.findByEmail(email)
-            .orElseThrow(() -> new NotFoundException("Manager not found"));
-        List<User> team = userRepository.findByManager_Id(manager.getId());
-        // Add manager to the team list, ensuring no duplicates
+    public List<UserDto> getTeam(String userId, String scope) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid userId format: must be a UUID");
+        }
+        User currentUser = userRepository.findById(uuid)
+                .orElseThrow(() -> new NotFoundException("User not found"));
         List<User> result = new ArrayList<>();
-        result.add(manager);
-        for (User user : team) {
-            if (!user.getId().equals(manager.getId())) {
-                result.add(user);
+        switch (scope.toLowerCase()) {
+            case "team" -> {
+                User manager = currentUser.getManager();
+                if (manager == null) {
+                    throw new BadRequestException("Current user does not have a manager, so no team can be returned.");
+                }
+                result.add(manager);
+                List<User> teamMembers = userRepository.findByManager_Id(manager.getId());
+                for (User u : teamMembers) {
+                    if (!u.getId().equals(manager.getId())) {
+                        result.add(u);
+                    }
+                }
             }
+            case "managed" -> {
+                if (currentUser.getRoles().stream().filter(role -> role.getName().equals(Role.MANAGER.name()))
+                .findFirst().isEmpty()) {
+                    throw new BadRequestException("Current user is not a manager, so no managed team can be returned.");
+                }
+                result.add(currentUser);
+                List<User> managedTeam = userRepository.findByManager_Id(currentUser.getId());
+                for (User u : managedTeam) {
+                    if (!u.getId().equals(currentUser.getId())) {
+                        result.add(u);
+                    }
+                }
+            }
+            default -> throw new BadRequestException("scope param must be 'team' or 'managed'");
         }
         return result.stream().map(UserMapper::toDto).collect(Collectors.toList());
     }
