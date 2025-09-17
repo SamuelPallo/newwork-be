@@ -130,6 +130,103 @@ The backend uses PostgreSQL. You must have the database running before starting 
 
 ---
 
+## Quick Start: Running the App
+
+### 1. Start the Database
+
+- **With Docker Compose:**
+  ```sh
+  cd db
+  docker-compose up -d
+  ```
+  - Database: `hrapp` | User: `postgres` | Password: `postgres` | Host: `hrapp_postgres` | Port: `5432`
+  - Adminer UI: [http://localhost:8080](http://localhost:8080)
+
+- **With Docker directly:**
+  ```sh
+  docker network create newwork
+  docker run --name newwork-postgres --network newwork \
+    -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppassword -e POSTGRES_DB=appdb \
+    -p 5432:5432 -d postgres:15
+  ```
+  - Database: `appdb` | User: `appuser` | Password: `apppassword` | Host: `newwork-postgres` | Port: `5432`
+  - Adminer UI (optional): [http://localhost:8080](http://localhost:8080)
+
+### 2. Build and Run the Backend
+
+- **Build the JAR:**
+  ```sh
+  ./gradlew build
+  ```
+- **Build Docker image:**
+  ```sh
+  docker build -t newwork-backend .
+  ```
+- **Run the backend container:**
+  ```sh
+  docker run --name newwork-backend --network newwork -p 8081:8081 newwork-backend
+  ```
+  - API: [http://localhost:8081](http://localhost:8081)
+  - Swagger UI: [http://localhost:8081/api/v1/swagger-ui.html](http://localhost:8081/api/v1/swagger-ui.html)
+  - OpenAPI docs: [http://localhost:8081/api/v1/api-docs](http://localhost:8081/api/v1/api-docs)
+
+---
+
+## Architecture Decisions
+
+- **Layered Architecture:**
+  - Controllers (REST endpoints)
+  - Services (business logic)
+  - Repositories (data access)
+  - DTOs and Mappers (data transfer and conversion)
+  - Exception handling via custom exceptions and advices
+  - Security: Spring Security + JWT
+  - Logging: AOP-based, with sensitive data masking
+  - Database migrations: Liquibase
+- **Configuration:**
+  - Profiles for local, docker, etc. (`application.yml`, `application-docker.yml`, `application-local.yml`)
+  - Externalized configuration for DB, JWT, etc.
+- **Resilience:**
+  - Basic resilience config (see `ResilienceConfig.java`)
+- **Utilities:**
+  - Log sanitization, security utilities, etc.
+
+---
+
+## What Could Be Improved
+
+- **Testing:**
+  - No unit test coverage for services, controllers, or mappers
+  - No integration tests for API endpoints or DB interactions
+  - No automated test coverage for security/auth flows
+- **Validation:**
+  - Input validation is minimal; could use more robust validation annotations and custom validators
+  - No centralized validation error handling
+- **Error Handling:**
+  - Exception handling is present but could be more granular and standardized
+- **API Documentation:**
+  - Swagger/OpenAPI is present, but endpoint documentation could be more detailed
+- **Security:**
+  - Security config could be refactored for clarity and extensibility
+  - No role-based access tests
+- **Resilience:**
+  - Resilience features (e.g., retries, circuit breakers) are basic and could be expanded
+- **Database:**
+  - Liquibase changelogs are present, but DB seeding and migration strategies could be improved
+- **Code Quality:**
+  - Some duplication in DTOs and mappers
+  - Logging could be standardized further
+- **DevOps:**
+  - No CI/CD pipeline
+  - No Docker Compose for backend (only for DB)
+  - No health checks or readiness probes
+- **Frontend Integration:**
+  - No integration tests with frontend
+- **Documentation:**
+  - README could include more troubleshooting and FAQ
+
+---
+
 ## Database Migrations with Liquibase
 
 - Liquibase is used for managing database schema changes and migrations.
