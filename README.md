@@ -209,6 +209,7 @@ The backend uses PostgreSQL. You must have the database running before starting 
 - **Security:**
   - Security config could be refactored for clarity and extensibility
   - No role-based access tests
+  - No password reset or account recovery flows; would benefit from a secure password reset feature (e.g., email with token)
 - **Resilience:**
   - Resilience features (e.g., retries, circuit breakers) are basic and could be expanded
 - **Database:**
@@ -224,6 +225,26 @@ The backend uses PostgreSQL. You must have the database running before starting 
   - No integration tests with frontend
 - **Documentation:**
   - README could include more troubleshooting and FAQ
+- **Microservices & Event-Driven Architecture:**
+  - The current monolith could be split into microservices (e.g., notification, feedback, absence, user management)
+  - A dedicated Notification Service could be introduced, using Kafka or another pub/sub system for event-driven communication
+  - When feedback is added to a user, or an absence is requested, an event could be published to Kafka; the Notification Service would consume these events and send emails, push notifications, or in-app alerts
+  - This would decouple business logic from notification delivery, improve scalability, and allow for more flexible notification channels
+- **User Experience Enhancements:**
+  - Add password reset functionality (e.g., via email with secure token)
+  - Add email or in-app notifications for key events (feedback received, absence requested/approved/denied, etc.)
+- **Polish/Content Enhancement Service:**
+  - Currently, the Polish feature is not functional due to lack of an API key
+  - In a production system, a dedicated microservice could be created to handle content polishing, integrating with multiple LLMs or external APIs using design patterns (e.g., Strategy, Adapter) for extensibility
+  - This would allow switching between different content enhancement providers or models as needed
+- **Other Potential Improvements:**
+  - Add audit logging for sensitive actions (user updates, feedback changes, etc.)
+  - Implement rate limiting and brute-force protection on authentication endpoints
+  - Add support for multi-tenancy or organization-based data segregation
+  - Enhance role and permission management for more granular access control
+  - Add support for file uploads (e.g., attachments to absences or feedback)
+  - Improve accessibility and internationalization (i18n) support
+  - Add API versioning and deprecation strategy
 
 ---
 
