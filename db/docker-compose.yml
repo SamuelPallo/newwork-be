@@ -12,6 +12,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - newwork
 
   adminer:
     image: adminer
@@ -21,6 +23,13 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    networks:
+      - newwork
 
 volumes:
   postgres_data:
+
+networks:
+  newwork:
+    name: newwork
+    driver: bridge

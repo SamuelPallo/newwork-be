@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://hrapp_postgres:5432/hrapp
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+jwt:
+  secret: "455f33e53d1eff48fcdcaa989062f8a8a9ecf593f29c89a73c470b383a46cc37ebaf395c6d996b31b647da1b0a1373b8cbf7b05dac531bbba82c60aa36338ff90df3daebe9b62d48ea97f7ff75951e95fd505b724986afc6e4cc99bec264ac2fe550791f76a2b9f8acf9454e6a7e220eab5a78b98da25d53c2e72417c09ea728"
+  expiration: 3600000
+  refresh-token-expiry: 3600000

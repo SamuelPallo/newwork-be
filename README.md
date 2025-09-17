@@ -37,24 +37,62 @@ You can run the backend in two ways: directly with Gradle, or as a Docker contai
 
 The backend uses PostgreSQL. You must have the database running before starting the backend.
 
-- Using Docker Compose (recommended):
+- **Using Docker Compose:**
   ```sh
   cd db
   docker-compose up -d
   ```
-- Or, using Docker directly:
+  - **Database connection details:**
+    - **Database:** hrapp
+    - **User:** postgres
+    - **Password:** postgres
+    - **Host:** hrapp_postgres (service/container name)
+    - **Port:** 5432
+  - **Adminer UI for DB management:**
+    - Accessible at: `http://localhost:8080`
+
+- **Using Docker directly (custom network):**
   ```sh
-  docker run --name newwork-postgres -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppassword -e POSTGRES_DB=appdb -p 5432:5432 -d postgres:15
+  docker network create newwork
+  docker run --name newwork-postgres --network newwork \
+    -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppassword -e POSTGRES_DB=appdb \
+    -p 5432:5432 -d postgres:15
   ```
-- **Default DB:** appdb
-- **User:** appuser
-- **Password:** apppassword
-- **Port:** 5432
-- You can change these in `src/main/resources/application.yml` or `application-local.yml`.
+  - **Database connection details:**
+    - **Database:** appdb
+    - **User:** appuser
+    - **Password:** apppassword
+    - **Host:** newwork-postgres (container name)
+    - **Port:** 5432
+  - If you want a DB UI, you can run Adminer:
+    ```sh
+    docker run --name adminer --network newwork -p 8080:8080 -d adminer
+    ```
+    - Accessible at: `http://localhost:8080`
 
-### 2. Run the Backend
+- You can change these credentials in `src/main/resources/application.yml` or `application-local.yml`.
 
-#### Option A: Run with Gradle
+### 2. Run the Backend (Docker only, no Compose)
+
+1. **Build the backend jar:**
+   ```sh
+   ./gradlew build
+   ```
+2. **Build the Docker image (Java 21):**
+   ```sh
+   docker build -t newwork-backend .
+   ```
+3. **Run the backend container on the same network as the database:**
+   ```sh
+   docker run --name newwork-backend --network newwork -p 8081:8081 newwork-backend
+   ```
+   - The backend will be available at: `http://localhost:8081`
+   - **Swagger UI:** `http://localhost:8081/api/v1/swagger-ui.html`
+   - **OpenAPI docs:** `http://localhost:8081/api/v1/api-docs`
+   - The backend will connect to the database using the credentials and host specified above (e.g., `newwork-postgres` or `hrapp_postgres`).
+   - Make sure the database container is running and accessible on the same Docker network (`newwork`).
+
+### 3. Run the Backend (Gradle)
 
 1. **Configure environment variables (if needed):**
    - Edit `src/main/resources/application.yml` or `application-local.yml` for DB credentials or other settings.
@@ -66,32 +104,23 @@ The backend uses PostgreSQL. You must have the database running before starting 
    ```sh
    ./gradlew bootRun
    ```
-   The API will be available at `http://localhost:8081`.
+   - The backend will be available at: `http://localhost:8081`
+   - **Swagger UI:** `http://localhost:8081/api/v1/swagger-ui.html`
+   - **OpenAPI docs:** `http://localhost:8081/api/v1/api-docs`
+   - The backend will connect to the database using the credentials and host specified above (e.g., `newwork-postgres` or `hrapp_postgres`).
+   - Make sure the database container is running and accessible on the same Docker network (`newwork`).
 
-#### Option B: Run as a Docker Container
+### 4. Verify Network Connectivity
 
-1. **Build the backend jar:**
-   ```sh
-   ./gradlew build
-   ```
-2. **Build the Docker image (Java 21):**
-   ```sh
-   docker build -t newwork-backend .
-   ```
-3. **Run the backend container:**
-   ```sh
-   docker run --name newwork-backend --network host -p 8081:8081 newwork-backend
-   ```
-   - The backend will be available at `http://localhost:8081`.
-   - The container uses Java 21 and sets the Spring profile to `local` by default.
-   - You can pass environment variables (e.g., DB credentials) using `-e` flags or a custom config file.
-   - Make sure the database container is running and accessible.
-
----
-
-## Project Structure
-
-- `src/main/java/com/hr/newwork/controllers/` — REST controllers
+- To check which network a container is on:
+  ```sh
+  docker inspect <container_name> --format '{{json .NetworkSettings.Networks}}'
+  ```
+- To see all containers on the network:
+  ```sh
+  docker network inspect newwork
+  ```
+- Both backend and database containers must appear in the `newwork` network's container list.
 - `src/main/java/com/hr/newwork/services/` — Business logic
 - `src/main/java/com/hr/newwork/repositories/` — Data access
 - `src/main/java/com/hr/newwork/data/entity/` — JPA entities
