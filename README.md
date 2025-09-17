@@ -293,3 +293,12 @@ For questions or support, contact the maintainers or open an issue in the reposi
 ---
 
 Replace `<repo-url>` with your actual repository URL. Adjust DB details and structure as needed for your project.
+
+---
+
+## Sample Data
+
+- The database is seeded with several sample users for testing/demo purposes.
+- **All sample users have the same password:** `password12345`
+- **User emails can be found in the database** (see the `users` table via Adminer or a database client).
+- You can find the seed logic in the Liquibase changelogs under `src/main/resources/db/changelog/` (e.g., `002-add-default-users.xml`, `005-seed-managers-hierarchy.xml`).
