@@ -29,15 +29,17 @@ This is the backend for the Newwork application, built with Java and Spring Boot
 
 ---
 
-## Running the Project Locally or in Docker
+## Quick Start: Running the App (Locally or with Docker)
 
-You can run the backend in two ways: directly with Gradle, or as a Docker container. In both cases, you need a running PostgreSQL database (see below).
+> **Important:**
+> - All Docker Compose commands (e.g., `docker-compose up -d`) must be run from the `db` directory.
+> - All backend build and run commands (e.g., `./gradlew build`, `docker build`, `./gradlew bootRun`) must be run from the project root (where `build.gradle` and `Dockerfile` are located).
+> - If you are using Windows, use `gradlew.bat` instead of `./gradlew`.
+> - For inspecting containers or troubleshooting, you can run commands from any directory, but ensure you have the correct context (e.g., `docker ps`, `docker network inspect newwork`).
 
-### 1. Start the Database in Docker
+### 1. Start the Database (PostgreSQL)
 
-The backend uses PostgreSQL. You must have the database running before starting the backend.
-
-- **Using Docker Compose:**
+- **Recommended: Using Docker Compose**
   ```sh
   cd db
   docker-compose up -d
@@ -49,68 +51,75 @@ The backend uses PostgreSQL. You must have the database running before starting 
     - **Host:** hrapp_postgres (service/container name)
     - **Port:** 5432
   - **Adminer UI for DB management:**
-    - Accessible at: `http://localhost:8080`
+    - Accessible at: [http://localhost:8080](http://localhost:8080)
 
-- **Using Docker directly (custom network):**
+- **Alternative: Using Docker directly (custom network)**
   ```sh
   docker network create newwork
-  docker run --name newwork-postgres --network newwork \
-    -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppassword -e POSTGRES_DB=appdb \
+  # Note: If you see 'network with name newwork already exists', you can ignore this message and proceed. The network is already available for your containers.
+  docker run --name hrapp_postgres --network newwork \
+    -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hrapp \
     -p 5432:5432 -d postgres:15
+  docker run --name adminer --network newwork -p 8080:8080 -d adminer
+
+  # On Windows CMD (use caret ^ for line continuation or write all on one line):
+  docker run --name hrapp_postgres --network newwork ^
+    -e POSTGRES_USER=postgres ^
+    -e POSTGRES_PASSWORD=postgres ^
+    -e POSTGRES_DB=hrapp ^
+    -p 5432:5432 -d postgres:15
+  docker run --name adminer --network newwork -p 8080:8080 -d adminer
+
+  # Or, all on one line (works everywhere):
+  docker run --name hrapp_postgres --network newwork -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hrapp -p 5432:5432 -d postgres:15
+  docker run --name adminer --network newwork -p 8080:8080 -d adminer
   ```
   - **Database connection details:**
-    - **Database:** appdb
-    - **User:** appuser
-    - **Password:** apppassword
-    - **Host:** newwork-postgres (container name)
+    - **Database:** hrapp
+    - **User:** postgres
+    - **Password:** postgres
+    - **Host:** hrapp_postgres (container name)
     - **Port:** 5432
-  - If you want a DB UI, you can run Adminer:
-    ```sh
-    docker run --name adminer --network newwork -p 8080:8080 -d adminer
-    ```
-    - Accessible at: `http://localhost:8080`
+  - **Adminer UI:** [http://localhost:8080](http://localhost:8080)
 
 - You can change these credentials in `src/main/resources/application.yml` or `application-local.yml`.
 
-### 2. Run the Backend (Docker only, no Compose)
+- **Note:** When building and running the backend with Docker, the application will use the `docker` Spring profile by default. Make sure your `application-docker.yml` is up to date with the correct database credentials and host.
+### 2. Start the Backend
 
-1. **Build the backend jar:**
-   ```sh
-   ./gradlew build
-   ```
-2. **Build the Docker image (Java 21):**
-   ```sh
-   docker build -t newwork-backend .
-   ```
-3. **Run the backend container on the same network as the database:**
-   ```sh
-   docker run --name newwork-backend --network newwork -p 8081:8081 newwork-backend
-   ```
-   - The backend will be available at: `http://localhost:8081`
-   - **Swagger UI:** `http://localhost:8081/api/v1/swagger-ui.html`
-   - **OpenAPI docs:** `http://localhost:8081/api/v1/api-docs`
-   - The backend will connect to the database using the credentials and host specified above (e.g., `newwork-postgres` or `hrapp_postgres`).
-   - Make sure the database container is running and accessible on the same Docker network (`newwork`).
+- **Option A: Run with Docker (recommended for production-like environment)**
+  1. **Build the backend jar:**
+     ```sh
+     ./gradlew build
+     ```
+  2. **Build the Docker image:**
+     ```sh
+     docker build -t newwork-backend .
+     ```
+  3. **Run the backend container on the same network as the database:**
+     ```sh
+     docker run --name newwork-backend --network newwork -p 8081:8081 newwork-backend
+     ```
+  - The backend will be available at: [http://localhost:8081](http://localhost:8081)
+  - **Swagger UI:** [http://localhost:8081/api/v1/swagger-ui.html](http://localhost:8081/api/v1/swagger-ui.html)
+  - **OpenAPI docs:** [http://localhost:8081/api/v1/api-docs](http://localhost:8081/api/v1/api-docs)
 
-### 3. Run the Backend (Gradle)
+- **Option B: Run locally with Gradle (for development)**
+  1. **Configure environment variables (if needed):**
+     - Edit `src/main/resources/application.yml` or `application-local.yml` for DB credentials or other settings.
+  2. **Build the project:**
+     ```sh
+     ./gradlew build
+     ```
+  3. **Run the application with the local profile:**
+     ```sh
+     ./gradlew bootRun --args='--spring.profiles.active=local'
+     ```
+  - The backend will be available at: [http://localhost:8081](http://localhost:8081)
+  - **Swagger UI:** [http://localhost:8081/api/v1/swagger-ui.html](http://localhost:8081/api/v1/swagger-ui.html)
+  - **OpenAPI docs:** [http://localhost:8081/api/v1/api-docs](http://localhost:8081/api/v1/api-docs)
 
-1. **Configure environment variables (if needed):**
-   - Edit `src/main/resources/application.yml` or `application-local.yml` for DB credentials or other settings.
-2. **Build the project:**
-   ```sh
-   ./gradlew build
-   ```
-3. **Run the application:**
-   ```sh
-   ./gradlew bootRun
-   ```
-   - The backend will be available at: `http://localhost:8081`
-   - **Swagger UI:** `http://localhost:8081/api/v1/swagger-ui.html`
-   - **OpenAPI docs:** `http://localhost:8081/api/v1/api-docs`
-   - The backend will connect to the database using the credentials and host specified above (e.g., `newwork-postgres` or `hrapp_postgres`).
-   - Make sure the database container is running and accessible on the same Docker network (`newwork`).
-
-### 4. Verify Network Connectivity
+### 3. Verify Network Connectivity (if using Docker)
 
 - To check which network a container is on:
   ```sh
@@ -121,54 +130,6 @@ The backend uses PostgreSQL. You must have the database running before starting 
   docker network inspect newwork
   ```
 - Both backend and database containers must appear in the `newwork` network's container list.
-- `src/main/java/com/hr/newwork/services/` — Business logic
-- `src/main/java/com/hr/newwork/repositories/` — Data access
-- `src/main/java/com/hr/newwork/data/entity/` — JPA entities
-- `src/main/java/com/hr/newwork/data/dto/` — Data Transfer Objects
-- `src/main/java/com/hr/newwork/config/` — Configuration (AOP, security, etc.)
-- `src/main/java/com/hr/newwork/util/` — Utilities (e.g., log sanitization)
-
----
-
-## Quick Start: Running the App
-
-### 1. Start the Database
-
-- **With Docker Compose:**
-  ```sh
-  cd db
-  docker-compose up -d
-  ```
-  - Database: `hrapp` | User: `postgres` | Password: `postgres` | Host: `hrapp_postgres` | Port: `5432`
-  - Adminer UI: [http://localhost:8080](http://localhost:8080)
-
-- **With Docker directly:**
-  ```sh
-  docker network create newwork
-  docker run --name newwork-postgres --network newwork \
-    -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppassword -e POSTGRES_DB=appdb \
-    -p 5432:5432 -d postgres:15
-  ```
-  - Database: `appdb` | User: `appuser` | Password: `apppassword` | Host: `newwork-postgres` | Port: `5432`
-  - Adminer UI (optional): [http://localhost:8080](http://localhost:8080)
-
-### 2. Build and Run the Backend
-
-- **Build the JAR:**
-  ```sh
-  ./gradlew build
-  ```
-- **Build Docker image:**
-  ```sh
-  docker build -t newwork-backend .
-  ```
-- **Run the backend container:**
-  ```sh
-  docker run --name newwork-backend --network newwork -p 8081:8081 newwork-backend
-  ```
-  - API: [http://localhost:8081](http://localhost:8081)
-  - Swagger UI: [http://localhost:8081/api/v1/swagger-ui.html](http://localhost:8081/api/v1/swagger-ui.html)
-  - OpenAPI docs: [http://localhost:8081/api/v1/api-docs](http://localhost:8081/api/v1/api-docs)
 
 ---
 
