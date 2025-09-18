@@ -8,6 +8,7 @@ import com.hr.newwork.services.LogoutService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(loginRequest));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Refresh token", description = "Refresh access token using a valid refresh token.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Token refreshed"),
@@ -46,6 +48,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(refreshRequest));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Logout", description = "Invalidate all refresh tokens for the authenticated user.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Logout successful"),
